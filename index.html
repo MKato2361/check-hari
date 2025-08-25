@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Excelチェックリスト管理ツール</title>
+  <meta name="theme-color" content="#2563eb" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="チェックリスト" />
+  <link rel="manifest" href="manifest.json" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* 未チェック状態のボタンのスタイル */
+    .btn-unchecked {
+        @apply bg-gray-200 text-gray-800;
+    }
+    /* 完了状態のボタンのスタイル */
+    .btn-checked {
+        @apply bg-green-500 text-white;
+    }
+    /* 不要状態のボタンのスタイル */
+    .btn-unnecessary {
+        @apply bg-red-500 text-white;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+  <div class="max-w-4xl mx-auto">
+    <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+      <h1 class="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+        📊 Excelチェックリスト管理ツール
+      </h1>
+      
+      <div class="border-2 border-dashed border-blue-300 rounded-lg p-6 text-center">
+        <input type="file" accept=".xlsx,.xls" id="file-upload" class="hidden" />
+        <label for="file-upload" class="cursor-pointer flex flex-col items-center gap-2 text-blue-600">
+          ⬆️
+          <span class="font-semibold">Excelファイルを選択</span>
+          <span class="text-sm text-gray-500">(.xlsx, .xls対応)</span>
+        </label>
+        <div id="file-name" class="mt-2 text-sm text-gray-600 hidden"></div>
+      </div>
+      <div id="loading" class="mt-4 text-center hidden">
+        <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <p class="mt-2 text-blue-600">ファイルを読み込み中...</p>
+      </div>
+    </div>
+
+    <div id="progress-section" class="bg-white rounded-lg shadow-lg p-6 mb-6 hidden">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-semibold text-gray-800">進捗状況</h2>
+        <button id="export-btn" class="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg">⬇️ エクスポート</button>
+      </div>
+      <div class="mb-4">
+        <div class="flex justify-between text-sm text-gray-600 mb-1">
+          <span id="progress-text">完了: 0 / 0</span>
+          <span id="progress-percentage">0%</span>
+        </div>
+        <div class="w-full bg-gray-200 rounded-full h-3">
+          <div id="progress-bar" class="bg-gradient-to-r from-green-500 to-green-600 h-3 rounded-full transition-all duration-300" style="width:0%"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="add-check-section" class="bg-white rounded-lg shadow-lg p-6 mb-6 hidden">
+      <h2 class="text-xl font-semibold text-gray-800 mb-4">チェック項目を追加</h2>
+      <div class="flex items-center gap-2">
+        <input type="text" id="new-check-name" placeholder="例: 電話連絡" class="flex-grow rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+        <button id="add-check-btn" class="py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+          追加
+        </button>
+      </div>
+    </div>
+
+    <div id="checklist-container" class="space-y-4"></div>
+
+    <div id="initial-message" class="bg-white rounded-lg shadow-lg p-12 text-center">
+      <p class="text-gray-500 text-lg">Excelファイルをアップロードしてチェックリストを開始してください</p>
+    </div>
+  </div>
+
+  <script>
+    let data = [];
+    let checkNames = [];
+    const LOCAL_STORAGE_KEY = 'excelChecklistData';
+    const CHECK_NAMES_KEY = 'checklistCheckNames';
+
+    // ページの読み込み時に保存されたデータを読み込む
+    window.addEventListener('load', () => {
+        const savedData = localStorage.getItem(LOCAL_STORAGE_KEY);
+        const savedCheckNames = localStorage.getItem(CHECK_NAMES_KEY);
+        if (savedData) {
+            try {
+                data = JSON.parse(savedData);
+                checkNames = savedCheckNames ? JSON.parse(savedCheckNames) : [];
+                if (data.length > 0) {
+                    renderChecklist();
+                    updateProgress();
+                    document.getElementById("progress-section").classList.remove("hidden");
+                    document.getElementById("add-check-section").classList.remove("hidden");
+                    document.getElementById("initial-message").classList.add("hidden");
+                }
+            } catch (e) {
+                console.error("Failed to load data from localStorage", e);
+                localStorage.removeItem(LOCAL_STORAGE_KEY);
+                localStorage.removeItem(CHECK_NAMES_KEY);
+            }
+        }
+    });
+
+    // ファイルアップロード
+    document.getElementById("file-upload").addEventListener("change", async (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const loading = document.getElementById("loading");
+      const fileName = document.getElementById("file-name");
+      const initialMessage = document.getElementById("initial-message");
+
+      loading.classList.remove("hidden");
+      fileName.textContent = `選択中: ${file.name}`;
+      fileName.classList.remove("hidden");
+      initialMessage.classList.add("hidden");
+
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer, { type: "array" });
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+        const headers = jsonData[0] || [];
+        const rows = jsonData.slice(1);
+
+        const findColumn = (keywords) =>
+          headers.findIndex((header) =>
+            keywords.some((keyword) => header && header.toString().toLowerCase().includes(keyword.toLowerCase()))
+          );
+
+        const managementNumberCol = findColumn(["管理番号","番号","id","no"]);
+        const propertyNameCol = findColumn(["物件名","物件","プロパティ","名称"]);
+        const startTimeCol = findColumn(["開始","start","予定開始","開始時間"]);
+        const endTimeCol = findColumn(["終了","end","予定終了","終了時間"]);
+
+        const formatDateTime = (v) => (v ? XLSX.SSF.format('yyyy/mm/dd hh:mm', v) : "");
+
+        data = rows
+          .filter((row) => row.some((c) => c !== undefined && c !== ""))
+          .map((row, index) => ({
+            id: index,
+            managementNumber: managementNumberCol >= 0 ? row[managementNumberCol] : `No.${index + 1}`,
+            propertyName: propertyNameCol >= 0 ? row[propertyNameCol] : "未設定",
+            startTime: startTimeCol >= 0 ? formatDateTime(row[startTimeCol]) : "",
+            endTime: endTimeCol >= 0 ? formatDateTime(row[endTimeCol]) : "",
+            // チェック項目を空の配列として初期化
+            checks: [],
+          }));
+        
+        // 新しいデータを読み込んだらチェック項目の名前もリセット
+        checkNames = [];
+        saveToLocalStorage();
+
+        renderChecklist();
+        updateProgress();
+        document.getElementById("progress-section").classList.remove("hidden");
+        document.getElementById("add-check-section").classList.remove("hidden");
+      } catch (err) {
+        alert("読み込みエラー: " + err.message);
+      } finally {
+        loading.classList.add("hidden");
+      }
+    });
+
+    // 手動でチェック項目名を追加する機能
+    document.getElementById("add-check-btn").addEventListener("click", () => {
+        const newCheckNameInput = document.getElementById("new-check-name");
+        const newCheckName = newCheckNameInput.value.trim();
+
+        if (newCheckName && !checkNames.includes(newCheckName)) {
+            checkNames.push(newCheckName);
+            data.forEach(item => {
+                item.checks.push({
+                    name: newCheckName,
+                    // 状態を0:未チェック, 1:完了, 2:不要 で管理
+                    status: 0,
+                    completedAt: null,
+                });
+            });
+            saveToLocalStorage();
+            renderChecklist();
+            updateProgress();
+            
+            // フォームをリセット
+            newCheckNameInput.value = "";
+        } else if (checkNames.includes(newCheckName)) {
+            alert("そのチェック項目は既に存在します。");
+        }
+    });
+    
+    // チェック状態を切り替える関数
+    function handleCheck(itemId, checkName) {
+      const now = new Date().toLocaleString("ja-JP", { year:"numeric", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit" });
+      
+      const item = data.find(i => i.id === itemId);
+      if (item) {
+          const check = item.checks.find(c => c.name === checkName);
+          if (check) {
+              // 状態を0, 1, 2で循環させる
+              check.status = (check.status + 1) % 3;
+              check.completedAt = check.status === 1 ? now : null;
+              saveToLocalStorage();
+              renderChecklist();
+              updateProgress();
+          }
+      }
+    }
+
+    function renderChecklist() {
+      const container = document.getElementById("checklist-container");
+      container.innerHTML = "";
+      data.forEach((item) => {
+        const isCompleted = item.checks.every(c => c.status === 1 || c.status === 2);
+        const borderColor = isCompleted ? "border-green-500" : "border-blue-500";
+        const bgColor = isCompleted ? "bg-green-50" : "bg-white";
+
+        const div = document.createElement("div");
+        div.className = `rounded-lg shadow-lg p-4 border-l-4 ${borderColor} ${bgColor}`;
+
+        div.innerHTML = `
+          <div class="flex items-start gap-4">
+            <div class="flex-grow">
+              <span class="font-semibold">${item.managementNumber}</span> ${item.propertyName}
+              <div class="mt-2 space-y-2">
+                ${item.startTime ? `<div class="text-sm text-blue-600">開始: ${item.startTime}</div>` : ""}
+                ${item.endTime ? `<div class="text-sm text-red-600">終了: ${item.endTime}</div>` : ""}
+              </div>
+            </div>
+          </div>
+          <div class="mt-4 border-t pt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+            ${item.checks.map(check => {
+                let buttonClass;
+                let buttonText;
+                let completedAtHtml = '';
+                if (check.status === 1) {
+                    buttonClass = "btn-checked";
+                    buttonText = "✔";
+                    completedAtHtml = `<div class="text-xs text-gray-500">${check.completedAt || ''}</div>`;
+                } else if (check.status === 2) {
+                    buttonClass = "btn-unnecessary";
+                    buttonText = "✕";
+                } else {
+                    buttonClass = "btn-unchecked";
+                    buttonText = "□";
+                }
+                return `
+                    <div class="flex items-center gap-2">
+                        <button onclick="handleCheck(${item.id}, '${check.name}')" class="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-lg ${buttonClass}">
+                            ${buttonText}
+                        </button>
+                        <div>
+                            <div class="text-sm text-gray-700">${check.name}</div>
+                            ${completedAtHtml}
+                        </div>
+                    </div>
+                `;
+            }).join('')}
+          </div>`;
+        container.appendChild(div);
+      });
+    }
+
+    function updateProgress() {
+      const allChecks = data.flatMap(item => item.checks);
+      // 完了状態のチェックのみをカウント
+      const completedChecks = allChecks.filter(c => c.status === 1).length;
+      const totalChecks = allChecks.length;
+      const percent = totalChecks ? Math.round((completedChecks / totalChecks) * 100) : 0;
+      document.getElementById("progress-text").textContent = `完了: ${completedChecks} / ${totalChecks}`;
+      document.getElementById("progress-percentage").textContent = `${percent}%`;
+      document.getElementById("progress-bar").style.width = `${percent}%`;
+    }
+
+    document.getElementById("export-btn").addEventListener("click", () => {
+      if (!data.length) return;
+      
+      const exportData = data.map((i) => {
+        const row = {
+          管理番号: i.managementNumber,
+          物件名: i.propertyName,
+          予定開始時間: i.startTime,
+          予定終了時間: i.endTime,
+        };
+        // 各チェック項目を列として追加
+        i.checks.forEach(check => {
+            let statusText = "未完了";
+            if (check.status === 1) {
+                statusText = "完了";
+            } else if (check.status === 2) {
+                statusText = "不要";
+            }
+            row[check.name] = statusText;
+            row[`${check.name}完了日時`] = check.completedAt || "";
+        });
+        return row;
+      });
+
+      const ws = XLSX.utils.json_to_sheet(exportData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "チェックリスト");
+      XLSX.writeFile(wb, "チェックリスト.xlsx");
+    });
+    
+    // localStorageにデータを保存する関数
+    function saveToLocalStorage() {
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data));
+        localStorage.setItem(CHECK_NAMES_KEY, JSON.stringify(checkNames));
+    }
+
+    // Service Worker登録
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("sw.js");
+      });
+    }
+  </script>
+</body>
+</html>
