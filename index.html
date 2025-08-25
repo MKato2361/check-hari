@@ -52,7 +52,7 @@
     <div class="bg-white rounded-lg shadow-lg p-6 mb-6 hidden" id="template-section">
       <h2 class="text-xl font-semibold text-gray-800 mb-4">Wordテンプレート選択</h2>
       <input type="file" accept=".docx" id="template-upload" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-      <p class="mt-2 text-sm text-gray-500">※未選択の場合は、同じディレクトリの `harigami.docx` を使用します。</p>
+      <p class="mt-2 text-sm text-gray-500">※未選択の場合は、harigami.docxテンプレートをアップロードしてください。</p>
     </div>
 
     <div id="progress-section" class="bg-white rounded-lg shadow-lg p-6 mb-6 hidden">
@@ -99,12 +99,9 @@
     (function() {
       let data = [];
       let checkNames = [];
-      const LOCAL_STORAGE_KEY = 'excelChecklistData';
-      const CHECK_NAMES_KEY = 'checklistCheckNames';
 
       // ページの読み込み時に保存されたデータを読み込む
       window.addEventListener('load', () => {
-        loadFromLocalStorage();
         if (data.length > 0) {
           renderChecklist();
           updateProgress();
@@ -166,8 +163,6 @@
               };
               return item;
             });
-          
-          saveToLocalStorage();
 
           renderChecklist();
           updateProgress();
@@ -194,7 +189,6 @@
               completedAt: null,
             });
           });
-          saveToLocalStorage();
           renderChecklist();
           updateProgress();
           
@@ -217,7 +211,6 @@
           if (check) {
             check.status = (check.status + 1) % 3;
             check.completedAt = check.status === 1 ? nowStr : null;
-            saveToLocalStorage();
             renderChecklist();
             updateProgress();
           }
@@ -254,7 +247,7 @@
                   let completedAtHtml = '';
                   if (check.status === 1) {
                       buttonClass = "btn-checked";
-                      buttonText = "✔";
+                      buttonText = "✓";
                       ariaLabel = `${check.name}: 完了`;
                       completedAtHtml = `<div class="text-xs text-gray-500">${check.completedAt || ''}</div>`;
                   } else if (check.status === 2) {
@@ -327,35 +320,8 @@
         XLSX.utils.book_append_sheet(wb, ws, "チェックリスト");
         XLSX.writeFile(wb, "チェックリスト.xlsx");
       });
-      
-      // localStorageにデータを保存する関数
-      function saveToLocalStorage() {
-        try {
-          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data));
-          localStorage.setItem(CHECK_NAMES_KEY, JSON.stringify(checkNames));
-        } catch (e) {
-          console.error("LocalStorage save error:", e);
-          alert("データの保存に失敗しました。ストレージ容量を確認してください。");
-        }
-      }
 
-      // localStorageからデータを読み込む関数
-      function loadFromLocalStorage() {
-        const savedData = localStorage.getItem(LOCAL_STORAGE_KEY);
-        const savedCheckNames = localStorage.getItem(CHECK_NAMES_KEY);
-        if (savedData) {
-          try {
-            data = JSON.parse(savedData);
-            checkNames = savedCheckNames ? JSON.parse(savedCheckNames) : [];
-          } catch (e) {
-            console.error("Failed to load data from localStorage", e);
-            localStorage.removeItem(LOCAL_STORAGE_KEY);
-            localStorage.removeItem(CHECK_NAMES_KEY);
-          }
-        }
-      }
-
-      // Word一括出力機能
+      // Word一括出力機能（修正版）
       document.getElementById("export-docx-zip-btn").addEventListener("click", async () => {
         if (!data.length) {
           alert("データがありません");
@@ -370,20 +336,19 @@
           if (templateFile) {
             templateContent = await templateFile.arrayBuffer();
           } else {
-            const response = await fetch("./harigami.docx");
-            if (!response.ok) {
-              throw new Error("Template not found");
-            }
-            templateContent = await response.arrayBuffer();
+            // デフォルトテンプレートの内容を作成
+            alert("テンプレートファイルを選択してください。harigami.docxファイルをアップロードする必要があります。");
+            return;
           }
         } catch (e) {
-          alert("テンプレートファイルの読み込みに失敗しました。`harigami.docx`が存在するか確認してください。");
+          alert("テンプレートファイルの読み込みに失敗しました。");
           console.error("Template loading error:", e);
           return;
         }
 
         const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
-        const outputPromises = data.map(async (item) => {
+        
+        for (const item of data) {
           try {
             const zipTemplate = new PizZip(templateContent);
             const doc = new window.docxtemplater(zipTemplate, {
@@ -396,25 +361,55 @@
             let endTime = "";
             let monthForFilename = "";
             
-            if (item.startRaw) {
-              const dt = new Date(item.startRaw.y, item.startRaw.m - 1, item.startRaw.d, item.startRaw.H, item.startRaw.M, item.startRaw.S);
+            // 日付の処理を修正
+            if (item.startRaw && item.startRaw.y) {
+              const dt = new Date(item.startRaw.y, item.startRaw.m - 1, item.startRaw.d, 
+                                 item.startRaw.H || 0, item.startRaw.M || 0, item.startRaw.S || 0);
               if (!isNaN(dt.getTime())) {
                 const month = dt.getMonth() + 1;
                 const day = dt.getDate();
                 const weekday = weekdays[dt.getDay()];
                 dateStr = `${month}月${day}日（${weekday}）`;
-                startTime = dt.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
+                startTime = `${dt.getHours().toString().padStart(2, '0')}:${dt.getMinutes().toString().padStart(2, '0')}`;
                 monthForFilename = `${month}月`;
               }
+            } else if (item.startTime) {
+              // startTimeから日付を解析
+              try {
+                const dt = new Date(item.startTime);
+                if (!isNaN(dt.getTime())) {
+                  const month = dt.getMonth() + 1;
+                  const day = dt.getDate();
+                  const weekday = weekdays[dt.getDay()];
+                  dateStr = `${month}月${day}日（${weekday}）`;
+                  startTime = `${dt.getHours().toString().padStart(2, '0')}:${dt.getMinutes().toString().padStart(2, '0')}`;
+                  monthForFilename = `${month}月`;
+                }
+              } catch (e) {
+                console.log("Date parsing error:", e);
+              }
             }
-            if (item.endRaw) {
-              const dt = new Date(item.endRaw.y, item.endRaw.m - 1, item.endRaw.d, item.endRaw.H, item.endRaw.M, item.endRaw.S);
+            
+            if (item.endRaw && item.endRaw.y) {
+              const dt = new Date(item.endRaw.y, item.endRaw.m - 1, item.endRaw.d, 
+                                 item.endRaw.H || 0, item.endRaw.M || 0, item.endRaw.S || 0);
               if (!isNaN(dt.getTime())) {
-                endTime = dt.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
+                endTime = `${dt.getHours().toString().padStart(2, '0')}:${dt.getMinutes().toString().padStart(2, '0')}`;
+              }
+            } else if (item.endTime) {
+              try {
+                const dt = new Date(item.endTime);
+                if (!isNaN(dt.getTime())) {
+                  endTime = `${dt.getHours().toString().padStart(2, '0')}:${dt.getMinutes().toString().padStart(2, '0')}`;
+                }
+              } catch (e) {
+                console.log("End time parsing error:", e);
               }
             }
 
+            // テンプレートの変数を設定
             doc.setData({
+              "管理番号": item.managementNumber || "",
               "日付": dateStr,
               "予定開始": startTime,
               "予定終了": endTime,
@@ -423,18 +418,25 @@
             
             doc.render();
             const out = doc.getZip().generate({ type: "blob" });
-            const safeManagementNumber = (item.managementNumber || "").toString().replace(/[^a-zA-Z0-9一-龯ぁ-んァ-ヶー_\-]/g,"_");
-            const safePropertyName = (item.propertyName || "document").replace(/[^a-zA-Z0-9一-龯ぁ-んァ-ヶー_\-]/g,"_");
-            const filename = `${monthForFilename}_${safeManagementNumber}_${safePropertyName}.docx`;
+            
+            const safeManagementNumber = (item.managementNumber || "").toString().replace(/[^\w\-_.]/g,"_");
+            const safePropertyName = (item.propertyName || "document").replace(/[^\w\-_.]/g,"_");
+            const filename = `${monthForFilename || ""}${safeManagementNumber}_${safePropertyName}.docx`;
             zip.file(filename, out);
+            
           } catch (err) {
             console.error("Word generation error for item:", item, err);
+            alert(`ファイル生成エラー (${item.managementNumber}): ${err.message}`);
           }
-        });
+        }
 
-        await Promise.all(outputPromises);
-        const zipBlob = await zip.generateAsync({ type: "blob" });
-        saveAs(zipBlob, "貼紙_documents.zip");
+        try {
+          const zipBlob = await zip.generateAsync({ type: "blob" });
+          saveAs(zipBlob, "貼紙_documents.zip");
+        } catch (err) {
+          console.error("ZIP generation error:", err);
+          alert("ZIPファイルの生成に失敗しました: " + err.message);
+        }
       });
 
       // セクションを表示する関数
@@ -442,15 +444,6 @@
         document.getElementById("progress-section").classList.remove("hidden");
         document.getElementById("add-check-section").classList.remove("hidden");
         document.getElementById("template-section").classList.remove("hidden");
-      }
-
-      // Service Worker登録
-      if ("serviceWorker" in navigator) {
-        window.addEventListener("load", () => {
-          navigator.serviceWorker.register("sw.js").catch(err => {
-            console.error("Service Worker registration failed:", err);
-          });
-        });
       }
     })();
   </script>
