@@ -11,24 +11,22 @@
   <link rel="manifest" href="manifest.json" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    /* 未チェック状態のボタンのスタイル */
-    .btn-unchecked {
-        @apply bg-gray-200 text-gray-800;
-    }
-    /* 完了状態のボタンのスタイル */
-    .btn-checked {
-        @apply bg-green-500 text-white;
-    }
-    /* 不要状態のボタンのスタイル */
-    .btn-unnecessary {
-        @apply bg-red-500 text-white;
-    }
-  </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pizzip/3.1.6/pizzip.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/docxtemplater/3.40.1/docxtemplater.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+  <style>
+    /* チェックボタンのスタイル */
+    .btn-unchecked {
+        @apply bg-gray-200 text-gray-800;
+    }
+    .btn-checked {
+        @apply bg-green-500 text-white;
+    }
+    .btn-unnecessary {
+        @apply bg-red-500 text-white;
+    }
+  </style>
 </head>
 <body class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
   <div class="max-w-4xl mx-auto">
@@ -127,7 +125,7 @@
         }
     });
 
-    // ファイルアップロード
+    // ファイルアップロードの処理
     document.getElementById("file-upload").addEventListener("change", async (event) => {
       const file = event.target.files[0];
       if (!file) return;
@@ -165,19 +163,24 @@
 
         data = rows
           .filter((row) => row.some((c) => c !== undefined && c !== ""))
-          .map((row, index) => ({
-            id: index,
-            managementNumber: managementNumberCol >= 0 ? row[managementNumberCol] : `No.${index + 1}`,
-            propertyName: propertyNameCol >= 0 ? row[propertyNameCol] : "未設定",
-            startTime: startTimeCol >= 0 ? formatDateTime(row[startTimeCol]) : "",
-            endTime: endTimeCol >= 0 ? formatDateTime(row[endTimeCol]) : "",
-            // raw日付データを追加
-            startRaw: startTimeCol >= 0 ? formatRawDate(row[startTimeCol]) : null,
-            endRaw: endTimeCol >= 0 ? formatRawDate(row[endTimeCol]) : null,
-            checks: [],
-          }));
+          .map((row, index) => {
+            const item = {
+              id: index,
+              managementNumber: managementNumberCol >= 0 ? row[managementNumberCol] : `No.${index + 1}`,
+              propertyName: propertyNameCol >= 0 ? row[propertyNameCol] : "未設定",
+              startTime: startTimeCol >= 0 ? formatDateTime(row[startTimeCol]) : "",
+              endTime: endTimeCol >= 0 ? formatDateTime(row[endTimeCol]) : "",
+              startRaw: startTimeCol >= 0 ? formatRawDate(row[startTimeCol]) : null,
+              endRaw: endTimeCol >= 0 ? formatRawDate(row[endTimeCol]) : null,
+              checks: [],
+            };
+            // 既存のチェック項目があれば、新しいデータにも追加
+            checkNames.forEach(name => {
+              item.checks.push({ name, status: 0, completedAt: null });
+            });
+            return item;
+          });
         
-        checkNames = [];
         saveToLocalStorage();
 
         renderChecklist();
@@ -218,14 +221,15 @@
     
     // チェック状態を切り替える関数
     function handleCheck(itemId, checkName) {
-      const now = new Date().toLocaleString("ja-JP", { year:"numeric", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit" });
+      const now = new Date();
+      const nowStr = `${now.getFullYear()}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getDate().toString().padStart(2, '0')} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
       
       const item = data.find(i => i.id === itemId);
       if (item) {
           const check = item.checks.find(c => c.name === checkName);
           if (check) {
               check.status = (check.status + 1) % 3;
-              check.completedAt = check.status === 1 ? now : null;
+              check.completedAt = check.status === 1 ? nowStr : null;
               saveToLocalStorage();
               renderChecklist();
               updateProgress();
@@ -233,11 +237,11 @@
       }
     }
 
+    // チェックリストをレンダリングする関数
     function renderChecklist() {
       const container = document.getElementById("checklist-container");
       container.innerHTML = "";
       data.forEach((item) => {
-        // 全てのチェック項目が完了または不要になっているか判定
         const isCompleted = item.checks.length > 0 && item.checks.every(c => c.status === 1 || c.status === 2);
         const borderColor = isCompleted ? "border-green-500" : "border-blue-500";
         const bgColor = isCompleted ? "bg-green-50" : "bg-white";
@@ -288,6 +292,7 @@
       });
     }
 
+    // 進捗バーとテキストを更新する関数
     function updateProgress() {
       const allChecks = data.flatMap(item => item.checks);
       const completedChecks = allChecks.filter(c => c.status === 1).length;
@@ -298,6 +303,7 @@
       document.getElementById("progress-bar").style.width = `${percent}%`;
     }
 
+    // Excelエクスポート機能
     document.getElementById("export-btn").addEventListener("click", () => {
       if (!data.length) return;
       
@@ -387,7 +393,6 @@
                     }
                 }
 
-                // プレースホルダーをharigamiweb.pyに合わせる
                 doc.setData({
                     "日付": dateStr,
                     "予定開始": startTime,
