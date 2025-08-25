@@ -26,15 +26,34 @@
     .btn-unnecessary {
         @apply bg-red-500 text-white;
     }
+    /* アップロード枠の縮小スタイル */
+    #upload-area.compact {
+        @apply p-3;
+    }
+    #upload-area.compact label {
+        @apply text-sm;
+    }
+    #upload-area.compact label span:first-of-type {
+        @apply text-sm font-medium;
+    }
+    #upload-area.compact label span:last-of-type {
+        @apply text-xs;
+    }
+    #file-name.compact {
+        @apply text-xs;
+    }
+    #upload-section.compact {
+        @apply p-4;
+    }
   </style>
 </head>
 <body class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
   <div class="max-w-4xl mx-auto">
-    <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+    <div id="upload-section" class="bg-white rounded-lg shadow-lg p-6 mb-6 transition-all duration-300">
       <h1 class="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2">
         📊 Excelチェックリスト管理ツール
       </h1>
-      <div class="border-2 border-dashed border-blue-300 rounded-lg p-6 text-center">
+      <div id="upload-area" class="border-2 border-dashed border-blue-300 rounded-lg p-6 text-center transition-all duration-300">
         <input type="file" accept=".xlsx,.xls" id="file-upload" class="hidden" />
         <label for="file-upload" class="cursor-pointer flex flex-col items-center gap-2 text-blue-600">
           ⬆️
@@ -110,6 +129,9 @@
           updateProgress();
           showSections();
           document.getElementById("initial-message").classList.add("hidden");
+          document.getElementById("upload-section").classList.add("compact");
+          document.getElementById("upload-area").classList.add("compact");
+          document.getElementById("file-name").classList.add("compact");
         }
       });
 
@@ -121,6 +143,13 @@
         const loading = document.getElementById("loading");
         const fileName = document.getElementById("file-name");
         const initialMessage = document.getElementById("initial-message");
+        const uploadSection = document.getElementById("upload-section");
+        const uploadArea = document.getElementById("upload-area");
+
+        // 再アップロード時にcompactクラスを一旦削除
+        uploadSection.classList.remove("compact");
+        uploadArea.classList.remove("compact");
+        fileName.classList.remove("compact");
 
         loading.classList.remove("hidden");
         fileName.textContent = `選択中: ${file.name}`;
@@ -168,10 +197,14 @@
             });
           
           saveToLocalStorage();
-
           renderChecklist();
           updateProgress();
           showSections();
+
+          // アップロード枠を縮小
+          uploadSection.classList.add("compact");
+          uploadArea.classList.add("compact");
+          fileName.classList.add("compact");
         } catch (err) {
           alert("読み込みエラー: " + err.message);
           console.error("File loading error:", err);
@@ -404,55 +437,4 @@
                 const weekday = weekdays[dt.getDay()];
                 dateStr = `${month}月${day}日（${weekday}）`;
                 startTime = dt.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
-                monthForFilename = `${month}月`;
-              }
-            }
-            if (item.endRaw) {
-              const dt = new Date(item.endRaw.y, item.endRaw.m - 1, item.endRaw.d, item.endRaw.H, item.endRaw.M, item.endRaw.S);
-              if (!isNaN(dt.getTime())) {
-                endTime = dt.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
-              }
-            }
-
-            doc.setData({
-              "日付": dateStr,
-              "予定開始": startTime,
-              "予定終了": endTime,
-              "物件名": item.propertyName || ""
-            });
-            
-            doc.render();
-            const out = doc.getZip().generate({ type: "blob" });
-            const safeManagementNumber = (item.managementNumber || "").toString().replace(/[^a-zA-Z0-9一-龯ぁ-んァ-ヶー_\-]/g,"_");
-            const safePropertyName = (item.propertyName || "document").replace(/[^a-zA-Z0-9一-龯ぁ-んァ-ヶー_\-]/g,"_");
-            const filename = `${monthForFilename}_${safeManagementNumber}_${safePropertyName}.docx`;
-            zip.file(filename, out);
-          } catch (err) {
-            console.error("Word generation error for item:", item, err);
-          }
-        });
-
-        await Promise.all(outputPromises);
-        const zipBlob = await zip.generateAsync({ type: "blob" });
-        saveAs(zipBlob, "貼紙_documents.zip");
-      });
-
-      // セクションを表示する関数
-      function showSections() {
-        document.getElementById("progress-section").classList.remove("hidden");
-        document.getElementById("add-check-section").classList.remove("hidden");
-        document.getElementById("template-section").classList.remove("hidden");
-      }
-
-      // Service Worker登録
-      if ("serviceWorker" in navigator) {
-        window.addEventListener("load", () => {
-          navigator.serviceWorker.register("sw.js").catch(err => {
-            console.error("Service Worker registration failed:", err);
-          });
-        });
-      }
-    })();
-  </script>
-</body>
-</html>
+                monthForFilename = `${ Godot question: 修正後のフルコード表示してください
