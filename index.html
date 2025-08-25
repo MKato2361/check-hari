@@ -160,6 +160,14 @@
       data.forEach(item=>{
         const div=document.createElement("div");
         div.className="bg-white p-4 rounded shadow";
+
+        // 予定開始・終了を表示
+        const scheduleHtml = `
+          <div class="text-sm text-gray-600">
+            開始: ${item.startTime || "-"}　
+            終了: ${item.endTime || "-"}
+          </div>`;
+
         let checksHtml="";
         item.checks.forEach((c,idx)=>{
           const sym=c.state===1?"✔":c.state===2?"✖":"";
@@ -171,7 +179,13 @@
             ${c.date?`<span class="ml-2 text-sm text-gray-500">${c.date}</span>`:""}
             <br/>`;
         });
-        div.innerHTML=`<div class="font-bold">${item.managementNumber} ${item.propertyName}</div><div class="ml-4">${checksHtml || "<span class='text-gray-400 text-sm'>チェック項目なし</span>"}</div>`;
+
+        div.innerHTML=`
+          <div class="font-bold text-lg">${item.managementNumber} ${item.propertyName}</div>
+          ${scheduleHtml}
+          <div class="ml-4 mt-2">
+            ${checksHtml || "<span class='text-gray-400 text-sm'>チェック項目なし</span>"}
+          </div>`;
         cont.appendChild(div);
       });
     }
