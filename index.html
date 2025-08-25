@@ -237,7 +237,8 @@
       const container = document.getElementById("checklist-container");
       container.innerHTML = "";
       data.forEach((item) => {
-        const isCompleted = item.checks.every(c => c.status === 1 || c.status === 2);
+        // 全てのチェック項目が完了または不要になっているか判定
+        const isCompleted = item.checks.length > 0 && item.checks.every(c => c.status === 1 || c.status === 2);
         const borderColor = isCompleted ? "border-green-500" : "border-blue-500";
         const bgColor = isCompleted ? "bg-green-50" : "bg-white";
 
