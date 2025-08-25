@@ -51,7 +51,7 @@
 
     <div class="bg-white rounded-lg shadow-lg p-6 mb-6 hidden" id="template-section">
       <h2 class="text-xl font-semibold text-gray-800 mb-4">Wordテンプレート選択</h2>
-      <input type="file" accept=".docx" id="template-upload" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file;font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+      <input type="file" accept=".docx" id="template-upload" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
       <p class="mt-2 text-sm text-gray-500">※未選択の場合は、同じディレクトリの `harigami.docx` を使用します。</p>
     </div>
 
@@ -143,6 +143,7 @@
 
           const managementNumberCol = findColumn(["管理番号","番号","id","no"]);
           const propertyNameCol = findColumn(["物件名","物件","プロパティ","名称"]);
+          const workTypeCol = findColumn(["作業タイプ","作業種別","type","work type"]);
           const startTimeCol = findColumn(["開始","start","予定開始","開始時間"]);
           const endTimeCol = findColumn(["終了","end","予定終了","終了時間"]);
 
@@ -156,6 +157,7 @@
                 id: index,
                 managementNumber: managementNumberCol >= 0 ? row[managementNumberCol] : `No.${index + 1}`,
                 propertyName: propertyNameCol >= 0 ? row[propertyNameCol] : "未設定",
+                workType: workTypeCol >= 0 ? row[workTypeCol] : "",
                 startTime: startTimeCol >= 0 ? formatDateTime(row[startTimeCol]) : "",
                 endTime: endTimeCol >= 0 ? formatDateTime(row[endTimeCol]) : "",
                 startRaw: startTimeCol >= 0 ? formatRawDate(row[startTimeCol]) : null,
@@ -237,7 +239,7 @@
           div.innerHTML = `
             <div class="flex items-start gap-4">
               <div class="flex-grow">
-                <span class="font-semibold">${item.managementNumber}</span> ${item.propertyName}
+                <span class="font-semibold">${item.managementNumber}</span> ${item.propertyName} ${item.workType ? `(${item.workType})` : ''}
                 <div class="mt-2 space-y-2">
                   ${item.startTime ? `<div class="text-sm text-blue-600">開始: ${item.startTime}</div>` : ""}
                   ${item.endTime ? `<div class="text-sm text-red-600">終了: ${item.endTime}</div>` : ""}
@@ -303,6 +305,7 @@
           const row = {
             管理番号: i.managementNumber,
             物件名: i.propertyName,
+            作業タイプ: i.workType,
             予定開始時間: i.startTime,
             予定終了時間: i.endTime,
           };
