@@ -102,6 +102,7 @@
         const findCol = (keys) => headers.findIndex(h => keys.some(k => h && h.toString().includes(k)));
         const idCol = findCol(["管理番号","番号","id","no"]);
         const nameCol = findCol(["物件名","物件","名称"]);
+        const typeCol = findCol(["作業タイプ","タイプ","種別"]); // ← 作業タイプ列
         const startCol = findCol(["開始","予定開始"]);
         const endCol = findCol(["終了","予定終了"]);
 
@@ -111,6 +112,7 @@
           id:i,
           managementNumber:idCol>=0?row[idCol]:`No.${i+1}`,
           propertyName:nameCol>=0?row[nameCol]:"未設定",
+          workType:typeCol>=0?row[typeCol]:"",   // ← 作業タイプ
           startTime:startCol>=0?fmt(row[startCol]):"",
           endTime:endCol>=0?fmt(row[endCol]):"",
           startRaw: row[startCol], endRaw: row[endCol],
@@ -180,8 +182,11 @@
             <br/>`;
         });
 
+        // タイトルに 管理番号 + 物件名 + 作業タイプ
         div.innerHTML=`
-          <div class="font-bold text-lg">${item.managementNumber} ${item.propertyName}</div>
+          <div class="font-bold text-lg">
+            ${item.managementNumber} ${item.propertyName} ${item.workType || ""}
+          </div>
           ${scheduleHtml}
           <div class="ml-4 mt-2">
             ${checksHtml || "<span class='text-gray-400 text-sm'>チェック項目なし</span>"}
@@ -204,7 +209,13 @@
     document.getElementById("export-btn").addEventListener("click",()=>{
       if(!data.length)return;
       const out=data.map(item=>{
-        let row={管理番号:item.managementNumber,物件名:item.propertyName,予定開始:item.startTime,予定終了:item.endTime};
+        let row={
+          管理番号:item.managementNumber,
+          物件名:item.propertyName,
+          作業タイプ:item.workType,
+          予定開始:item.startTime,
+          予定終了:item.endTime
+        };
         item.checks.forEach(c=>{
           row[`${c.name} 状態`]=c.state===1?"完了":c.state===2?"不要":"未完了";
           row[`${c.name} 日時`]=c.state===1?c.date:"";
@@ -264,6 +275,7 @@
             "予定終了": endTime,
             "管理番号": item.managementNumber,
             "物件名": item.propertyName || "",
+            "作業タイプ": item.workType || ""
           });
 
           doc.render();
@@ -272,7 +284,8 @@
 
           const safeManagementNumber = item.managementNumber.toString().replace(/[^a-zA-Z0-9一-龯ぁ-んァ-ヶー_\-]/g,"_");
           const safePropertyName = (item.propertyName||"document").replace(/[^a-zA-Z0-9一-龯ぁ-んァ-ヶー_\-]/g,"_");
-          const filename = `${monthForFilename}_${safeManagementNumber}_${safePropertyName}.docx`;
+          const safeWorkType = (item.workType||"").replace(/[^a-zA-Z0-9一-龯ぁ-んァ-ヶー_\-]/g,"_");
+          const filename = `${monthForFilename}_${safeManagementNumber}_${safePropertyName}_${safeWorkType}.docx`;
 
           zip.file(filename, out);
         } catch(err){ console.error("差し込みエラー:",err); }
