@@ -11,6 +11,8 @@
   <link rel="manifest" href="manifest.json" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://unpkg.com/pizzip@3.1.4/dist/pizzip.min.js"></script>
+  <script src="https://unpkg.com/docxtemplater@3.17.8/build/docxtemplater.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
@@ -321,92 +323,6 @@
 
       // Word一括出力機能（修正版）
       document.getElementById("export-docx-zip-btn").addEventListener("click", async () => {
-        console.log("Word一括出力ボタンがクリックされました");
-        
-        if (!data.length) {
-          alert("データがありません");
-          return;
-        }
-
-        const templateFile = document.getElementById("template-upload").files[0];
-        if (!templateFile) {
-          alert("テンプレートファイルを選択してください。harigami.docxファイルをアップロードする必要があります。");
-          return;
-        }
-
-        try {
-          // ボタンを無効化して処理中であることを示す
-          const btn = document.getElementById("export-docx-zip-btn");
-          btn.disabled = true;
-          btn.textContent = "生成中...";
-
-          console.log("テンプレートファイルを読み込み中...");
-          const templateContent = await templateFile.arrayBuffer();
-          console.log("テンプレートファイル読み込み完了");
-
-          const zip = new JSZip();
-          const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
-          
-          // 簡易的なWord文書生成（docxtemplaterを使わない方法）
-          for (let i = 0; i < data.length; i++) {
-            const item = data[i];
-            console.log(`アイテム ${i + 1} を処理中:`, item);
-            
-            try {
-              // テンプレートのコピーを作成
-              const itemZip = new JSZip();
-              await itemZip.loadAsync(templateContent);
-              
-              // document.xmlを取得して置換
-              const docXml = await itemZip.file("word/document.xml").async("string");
-              
-              let modifiedXml = docXml;
-              
-              // 日付の処理
-              let dateStr = "";
-              let startTime = "";
-              let endTime = "";
-              let monthForFilename = "";
-              
-              if (item.startTime) {
-                try {
-                  const dt = new Date(item.startTime.replace(/(\d{4})\/(\d{1,2})\/(\d{1,2})\s(\d{1,2}):(\d{1,2})/, '$1-$2-$3T$4:$5:00'));
-                  if (!isNaN(dt.getTime())) {
-                    const month = dt.getMonth() + 1;
-                    const day = dt.getDate();
-                    const weekday = weekdays[dt.getDay()];
-                    dateStr = `${month}月${day}日（${weekday}）`;
-                    startTime = `${dt.getHours().toString().padStart(2, '0')}:${dt.getMinutes().toString().padStart(2, '0')}`;
-                    monthForFilename = `${month}月`;
-                  }
-                } catch (e) {
-                  console.log("日付解析エラー:", e);
-                }
-              }
-              
-              if (item.endTime) {
-                try {
-                  const dt = new Date(item.endTime.replace(/(\d{4})\/(\d{1,2})\/(\d{1,2})\s(\d{1,2}):(\d{1,2})/, '$1-$2-$3T$4:$5:00'));
-                  if (!isNaN(dt.getTime())) {
-                    endTime = `${dt.getHours().toString().padStart(2, '0')}:${dt.getMinutes().toString().padStart(2, '0')}`;
-                  }
-                } catch (e) {
-                  console.log("終了時間解析エラー:", e);
-                }
-              }
-
-              // テンプレート変数を置換
-              const replacements = {
-                '{管理番号}': item.managementNumber || '',
-                '{物件名}': item.propertyName || '',
-                '{日付}': dateStr,
-                '{予定開始}': startTime,
-                '{予定終了}': endTime
-              };
-
-              for (const [placeholder, value] of Object.entries(replacements)) {
-                const regex = new RegExp(placeholder.replace(/[{}]/g, '\\      // Word一括出力機能（修正版）
-      document.getElementById("export-docx-zip-btn").addEventListener("click", async () => {
         if (!data.length) {
           alert("データがありません");
           return;
@@ -471,53 +387,88 @@
             const doc = new DocxtemplaterClass(zipTemplate, {
               paragraphLoop: true,
               linebreaks: true,
-            });'), 'g');
-                modifiedXml = modifiedXml.replace(regex, value);
-              }
-              
-              // 修正したXMLをZIPに戻す
-              itemZip.file("word/document.xml", modifiedXml);
-              
-              // ファイル生成
-              const docBlob = await itemZip.generateAsync({ type: "blob" });
-              
-              const safeManagementNumber = (item.managementNumber || "").toString().replace(/[^\w\-_.ぁ-ん一-龯]/g, "_");
-              const safePropertyName = (item.propertyName || "document").replace(/[^\w\-_.ぁ-ん一-龯]/g, "_");
-              const filename = `${monthForFilename || ""}${safeManagementNumber}_${safePropertyName}.docx`;
-              
-              zip.file(filename, docBlob);
-              console.log(`ファイル生成完了: ${filename}`);
-              
-            } catch (err) {
-              console.error("個別ファイル生成エラー:", item.managementNumber, err);
-              alert(`ファイル生成エラー (${item.managementNumber}): ${err.message}`);
-            }
-          }
+            });
 
-          // ZIPファイル生成
-          console.log("ZIPファイルを生成中...");
+            let dateStr = "";
+            let startTime = "";
+            let endTime = "";
+            let monthForFilename = "";
+            
+            // 日付の処理を修正
+            if (item.startRaw && item.startRaw.y) {
+              const dt = new Date(item.startRaw.y, item.startRaw.m - 1, item.startRaw.d, 
+                                 item.startRaw.H || 0, item.startRaw.M || 0, item.startRaw.S || 0);
+              if (!isNaN(dt.getTime())) {
+                const month = dt.getMonth() + 1;
+                const day = dt.getDate();
+                const weekday = weekdays[dt.getDay()];
+                dateStr = `${month}月${day}日（${weekday}）`;
+                startTime = `${dt.getHours().toString().padStart(2, '0')}:${dt.getMinutes().toString().padStart(2, '0')}`;
+                monthForFilename = `${month}月`;
+              }
+            } else if (item.startTime) {
+              // startTimeから日付を解析
+              try {
+                const dt = new Date(item.startTime);
+                if (!isNaN(dt.getTime())) {
+                  const month = dt.getMonth() + 1;
+                  const day = dt.getDate();
+                  const weekday = weekdays[dt.getDay()];
+                  dateStr = `${month}月${day}日（${weekday}）`;
+                  startTime = `${dt.getHours().toString().padStart(2, '0')}:${dt.getMinutes().toString().padStart(2, '0')}`;
+                  monthForFilename = `${month}月`;
+                }
+              } catch (e) {
+                console.log("Date parsing error:", e);
+              }
+            }
+            
+            if (item.endRaw && item.endRaw.y) {
+              const dt = new Date(item.endRaw.y, item.endRaw.m - 1, item.endRaw.d, 
+                                 item.endRaw.H || 0, item.endRaw.M || 0, item.endRaw.S || 0);
+              if (!isNaN(dt.getTime())) {
+                endTime = `${dt.getHours().toString().padStart(2, '0')}:${dt.getMinutes().toString().padStart(2, '0')}`;
+              }
+            } else if (item.endTime) {
+              try {
+                const dt = new Date(item.endTime);
+                if (!isNaN(dt.getTime())) {
+                  endTime = `${dt.getHours().toString().padStart(2, '0')}:${dt.getMinutes().toString().padStart(2, '0')}`;
+                }
+              } catch (e) {
+                console.log("End time parsing error:", e);
+              }
+            }
+
+            // テンプレートの変数を設定
+            doc.setData({
+              "管理番号": item.managementNumber || "",
+              "日付": dateStr,
+              "予定開始": startTime,
+              "予定終了": endTime,
+              "物件名": item.propertyName || ""
+            });
+            
+            doc.render();
+            const out = doc.getZip().generate({ type: "blob" });
+            
+            const safeManagementNumber = (item.managementNumber || "").toString().replace(/[^\w\-_.]/g,"_");
+            const safePropertyName = (item.propertyName || "document").replace(/[^\w\-_.]/g,"_");
+            const filename = `${monthForFilename || ""}${safeManagementNumber}_${safePropertyName}.docx`;
+            zip.file(filename, out);
+            
+          } catch (err) {
+            console.error("Word generation error for item:", item, err);
+            alert(`ファイル生成エラー (${item.managementNumber}): ${err.message}`);
+          }
+        }
+
+        try {
           const zipBlob = await zip.generateAsync({ type: "blob" });
-          
-          // ダウンロード
-          const link = document.createElement('a');
-          link.href = URL.createObjectURL(zipBlob);
-          link.download = "貼紙_documents.zip";
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          URL.revokeObjectURL(link.href);
-          
-          console.log("ダウンロード完了");
-          alert(`${data.length}個のWordファイルを生成しました。`);
-          
+          saveAs(zipBlob, "貼紙_documents.zip");
         } catch (err) {
-          console.error("Word一括出力エラー:", err);
-          alert("Word一括出力エラー: " + err.message);
-        } finally {
-          // ボタンを元に戻す
-          const btn = document.getElementById("export-docx-zip-btn");
-          btn.disabled = false;
-          btn.innerHTML = '📄 Word一括出力';
+          console.error("ZIP generation error:", err);
+          alert("ZIPファイルの生成に失敗しました: " + err.message);
         }
       });
 
