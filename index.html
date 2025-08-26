@@ -11,8 +11,6 @@
   <link rel="manifest" href="manifest.json" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="https://unpkg.com/pizzip@3.1.4/dist/pizzip.min.js"></script>
-  <script src="https://unpkg.com/docxtemplater@3.17.8/build/docxtemplater.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
@@ -36,9 +34,9 @@
       </h1>
       <div class="border-2 border-dashed border-blue-300 rounded-lg p-6 text-center">
         <input type="file" accept=".xlsx,.xls" id="file-upload" class="hidden" />
-        <label for="file-upload" class="cursor-pointer flex flex-col items-center gap-2 text-blue-600">
-          ⬆️
-          <span class="font-semibold">Excelファイルを選択</span>
+        <label for="file-upload" class="cursor-pointer flex flex-col items-center gap-2 text-blue-600 hover:text-blue-800">
+          <div class="text-4xl">⬆️</div>
+          <span class="font-semibold text-lg">Excelファイルを選択</span>
           <span class="text-sm text-gray-500">(.xlsx, .xls対応)</span>
         </label>
         <div id="file-name" class="mt-2 text-sm text-gray-600 hidden"></div>
@@ -102,6 +100,7 @@
 
       // ページの読み込み時に保存されたデータを読み込む
       window.addEventListener('load', () => {
+        console.log("ページ読み込み完了");
         if (data.length > 0) {
           renderChecklist();
           updateProgress();
@@ -112,9 +111,14 @@
 
       // ファイルアップロードの処理
       document.getElementById("file-upload").addEventListener("change", async (event) => {
+        console.log("ファイル選択イベント発生");
         const file = event.target.files[0];
-        if (!file) return;
+        if (!file) {
+          console.log("ファイルが選択されていません");
+          return;
+        }
 
+        console.log("選択されたファイル:", file.name);
         const loading = document.getElementById("loading");
         const fileName = document.getElementById("file-name");
         const initialMessage = document.getElementById("initial-message");
@@ -125,18 +129,28 @@
         initialMessage.classList.add("hidden");
 
         try {
+          console.log("ファイル読み込み開始");
           const arrayBuffer = await file.arrayBuffer();
+          console.log("ArrayBuffer作成完了");
+          
           const workbook = XLSX.read(arrayBuffer, { type: "array" });
+          console.log("ワークブック読み込み完了");
+          
           const worksheet = workbook.Sheets[workbook.SheetNames[0]];
           const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+          console.log("JSON変換完了:", jsonData.length, "行");
 
           const headers = jsonData[0] || [];
           const rows = jsonData.slice(1);
+          console.log("ヘッダー:", headers);
 
-          const findColumn = (keywords) =>
-            headers.findIndex((header) =>
+          const findColumn = (keywords) => {
+            const index = headers.findIndex((header) =>
               keywords.some((keyword) => header && header.toString().toLowerCase().includes(keyword.toLowerCase()))
             );
+            console.log(`カラム検索 [${keywords.join(', ')}]:`, index, headers[index]);
+            return index;
+          };
 
           const managementNumberCol = findColumn(["管理番号","番号","id","no"]);
           const propertyNameCol = findColumn(["物件名","物件","プロパティ","名称"]);
@@ -144,17 +158,34 @@
           const startTimeCol = findColumn(["開始","start","予定開始","開始時間"]);
           const endTimeCol = findColumn(["終了","end","予定終了","終了時間"]);
 
-          const formatDateTime = (v) => (v ? XLSX.SSF.format('yyyy/mm/dd hh:mm', v) : "");
-          const formatRawDate = (v) => v ? XLSX.SSF.parse_date_code(v) : null;
+          const formatDateTime = (v) => {
+            if (!v) return "";
+            try {
+              return XLSX.SSF.format('yyyy/mm/dd hh:mm', v);
+            } catch (e) {
+              console.log("日時フォーマットエラー:", e);
+              return v.toString();
+            }
+          };
+          
+          const formatRawDate = (v) => {
+            if (!v) return null;
+            try {
+              return XLSX.SSF.parse_date_code(v);
+            } catch (e) {
+              console.log("日付パースエラー:", e);
+              return null;
+            }
+          };
 
           data = rows
             .filter((row) => row.some((c) => c !== undefined && c !== ""))
             .map((row, index) => {
               const item = {
                 id: index,
-                managementNumber: managementNumberCol >= 0 ? row[managementNumberCol] : `No.${index + 1}`,
-                propertyName: propertyNameCol >= 0 ? row[propertyNameCol] : "未設定",
-                workType: workTypeCol >= 0 ? row[workTypeCol] : "",
+                managementNumber: managementNumberCol >= 0 ? (row[managementNumberCol] || `No.${index + 1}`) : `No.${index + 1}`,
+                propertyName: propertyNameCol >= 0 ? (row[propertyNameCol] || "未設定") : "未設定",
+                workType: workTypeCol >= 0 ? (row[workTypeCol] || "") : "",
                 startTime: startTimeCol >= 0 ? formatDateTime(row[startTimeCol]) : "",
                 endTime: endTimeCol >= 0 ? formatDateTime(row[endTimeCol]) : "",
                 startRaw: startTimeCol >= 0 ? formatRawDate(row[startTimeCol]) : null,
@@ -164,12 +195,18 @@
               return item;
             });
 
+          console.log("データ処理完了:", data.length, "アイテム");
+          console.log("サンプルデータ:", data[0]);
+
           renderChecklist();
           updateProgress();
           showSections();
+          
+          alert(`${data.length}件のデータを読み込みました`);
+          
         } catch (err) {
+          console.error("ファイル読み込みエラー:", err);
           alert("読み込みエラー: " + err.message);
-          console.error("File loading error:", err);
         } finally {
           loading.classList.add("hidden");
         }
@@ -520,89 +557,6 @@
           const btn = document.getElementById("export-docx-zip-btn");
           btn.disabled = false;
           btn.innerHTML = '📄 Word一括出力';
-        }
-      });
-
-            let dateStr = "";
-            let startTime = "";
-            let endTime = "";
-            let monthForFilename = "";
-            
-            // 日付の処理を修正
-            if (item.startRaw && item.startRaw.y) {
-              const dt = new Date(item.startRaw.y, item.startRaw.m - 1, item.startRaw.d, 
-                                 item.startRaw.H || 0, item.startRaw.M || 0, item.startRaw.S || 0);
-              if (!isNaN(dt.getTime())) {
-                const month = dt.getMonth() + 1;
-                const day = dt.getDate();
-                const weekday = weekdays[dt.getDay()];
-                dateStr = `${month}月${day}日（${weekday}）`;
-                startTime = `${dt.getHours().toString().padStart(2, '0')}:${dt.getMinutes().toString().padStart(2, '0')}`;
-                monthForFilename = `${month}月`;
-              }
-            } else if (item.startTime) {
-              // startTimeから日付を解析
-              try {
-                const dt = new Date(item.startTime);
-                if (!isNaN(dt.getTime())) {
-                  const month = dt.getMonth() + 1;
-                  const day = dt.getDate();
-                  const weekday = weekdays[dt.getDay()];
-                  dateStr = `${month}月${day}日（${weekday}）`;
-                  startTime = `${dt.getHours().toString().padStart(2, '0')}:${dt.getMinutes().toString().padStart(2, '0')}`;
-                  monthForFilename = `${month}月`;
-                }
-              } catch (e) {
-                console.log("Date parsing error:", e);
-              }
-            }
-            
-            if (item.endRaw && item.endRaw.y) {
-              const dt = new Date(item.endRaw.y, item.endRaw.m - 1, item.endRaw.d, 
-                                 item.endRaw.H || 0, item.endRaw.M || 0, item.endRaw.S || 0);
-              if (!isNaN(dt.getTime())) {
-                endTime = `${dt.getHours().toString().padStart(2, '0')}:${dt.getMinutes().toString().padStart(2, '0')}`;
-              }
-            } else if (item.endTime) {
-              try {
-                const dt = new Date(item.endTime);
-                if (!isNaN(dt.getTime())) {
-                  endTime = `${dt.getHours().toString().padStart(2, '0')}:${dt.getMinutes().toString().padStart(2, '0')}`;
-                }
-              } catch (e) {
-                console.log("End time parsing error:", e);
-              }
-            }
-
-            // テンプレートの変数を設定
-            doc.setData({
-              "管理番号": item.managementNumber || "",
-              "日付": dateStr,
-              "予定開始": startTime,
-              "予定終了": endTime,
-              "物件名": item.propertyName || ""
-            });
-            
-            doc.render();
-            const out = doc.getZip().generate({ type: "blob" });
-            
-            const safeManagementNumber = (item.managementNumber || "").toString().replace(/[^\w\-_.]/g,"_");
-            const safePropertyName = (item.propertyName || "document").replace(/[^\w\-_.]/g,"_");
-            const filename = `${monthForFilename || ""}${safeManagementNumber}_${safePropertyName}.docx`;
-            zip.file(filename, out);
-            
-          } catch (err) {
-            console.error("Word generation error for item:", item, err);
-            alert(`ファイル生成エラー (${item.managementNumber}): ${err.message}`);
-          }
-        }
-
-        try {
-          const zipBlob = await zip.generateAsync({ type: "blob" });
-          saveAs(zipBlob, "貼紙_documents.zip");
-        } catch (err) {
-          console.error("ZIP generation error:", err);
-          alert("ZIPファイルの生成に失敗しました: " + err.message);
         }
       });
 
