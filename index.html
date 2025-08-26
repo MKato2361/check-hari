@@ -10,11 +10,11 @@
   <meta name="apple-mobile-web-app-title" content="チェックリスト" />
   <link rel="manifest" href="manifest.json" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pizzip/3.1.6/pizzip.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/docxtemplater/3.40.1/docxtemplater.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://unpkg.com/pizzip@3.1.4/dist/pizzip.min.js"></script>
+  <script src="https://unpkg.com/docxtemplater@3.17.8/build/docxtemplater.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
   <style>
     /* チェックボタンのスタイル */
     .btn-unchecked {
@@ -327,6 +327,39 @@
           alert("データがありません");
           return;
         }
+
+        // 動的にライブラリを読み込む関数
+        const loadScript = (src) => {
+          return new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = src;
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+          });
+        };
+
+        try {
+          // PizZipとDocxtemplaterが存在しない場合は動的に読み込み
+          if (typeof PizZip === 'undefined') {
+            await loadScript('https://unpkg.com/pizzip@3.1.4/dist/pizzip.min.js');
+          }
+          if (typeof Docxtemplater === 'undefined') {
+            await loadScript('https://unpkg.com/docxtemplater@3.17.8/build/docxtemplater.min.js');
+          }
+        } catch (e) {
+          alert('ライブラリの読み込みに失敗しました。インターネット接続を確認してください。');
+          return;
+        }
+
+        // ライブラリの確認（グローバル変数として）
+        const PizZipClass = window.PizZip || PizZip;
+        const DocxtemplaterClass = window.Docxtemplater || Docxtemplater;
+
+        if (!PizZipClass || !DocxtemplaterClass) {
+          alert("必要なライブラリが読み込まれていません。ページをリロードして再試行してください。");
+          return;
+        }
         
         const zip = new JSZip();
         let templateContent;
@@ -336,7 +369,6 @@
           if (templateFile) {
             templateContent = await templateFile.arrayBuffer();
           } else {
-            // デフォルトテンプレートの内容を作成
             alert("テンプレートファイルを選択してください。harigami.docxファイルをアップロードする必要があります。");
             return;
           }
@@ -350,8 +382,9 @@
         
         for (const item of data) {
           try {
-            const zipTemplate = new PizZip(templateContent);
-            const doc = new window.docxtemplater(zipTemplate, {
+            // PizZipとDocxtemplaterの初期化
+            const zipTemplate = new PizZipClass(templateContent);
+            const doc = new DocxtemplaterClass(zipTemplate, {
               paragraphLoop: true,
               linebreaks: true,
             });
