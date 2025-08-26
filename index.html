@@ -96,270 +96,254 @@
   </div>
 
   <script>
-    (function() {
-      let data = [];
-      let checkNames = [];
-      const LOCAL_STORAGE_KEY = 'excelChecklistData';
-      const CHECK_NAMES_KEY = 'checklistCheckNames';
+    let data = [];
+    let checkNames = [];
+    const LOCAL_STORAGE_KEY = 'excelChecklistData';
+    const CHECK_NAMES_KEY = 'checklistCheckNames';
 
-      // ページの読み込み時に保存されたデータを読み込む
-      window.addEventListener('load', () => {
-        loadFromLocalStorage();
-        if (data.length > 0) {
-          renderChecklist();
-          updateProgress();
-          showSections();
-          document.getElementById("initial-message").classList.add("hidden");
+    // ページの読み込み時に保存されたデータを読み込む
+    window.addEventListener('load', () => {
+        const savedData = localStorage.getItem(LOCAL_STORAGE_KEY);
+        const savedCheckNames = localStorage.getItem(CHECK_NAMES_KEY);
+        if (savedData) {
+            try {
+                data = JSON.parse(savedData);
+                checkNames = savedCheckNames ? JSON.parse(savedCheckNames) : [];
+                if (data.length > 0) {
+                    renderChecklist();
+                    updateProgress();
+                    document.getElementById("progress-section").classList.remove("hidden");
+                    document.getElementById("add-check-section").classList.remove("hidden");
+                    document.getElementById("template-section").classList.remove("hidden");
+                    document.getElementById("initial-message").classList.add("hidden");
+                }
+            } catch (e) {
+                console.error("Failed to load data from localStorage", e);
+                localStorage.removeItem(LOCAL_STORAGE_KEY);
+                localStorage.removeItem(CHECK_NAMES_KEY);
+            }
         }
-      });
+    });
 
-      // ファイルアップロードの処理
-      document.getElementById("file-upload").addEventListener("change", async (event) => {
-        const file = event.target.files[0];
-        if (!file) return;
+    // ファイルアップロードの処理
+    document.getElementById("file-upload").addEventListener("change", async (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
 
-        const loading = document.getElementById("loading");
-        const fileName = document.getElementById("file-name");
-        const initialMessage = document.getElementById("initial-message");
+      const loading = document.getElementById("loading");
+      const fileName = document.getElementById("file-name");
+      const initialMessage = document.getElementById("initial-message");
 
-        loading.classList.remove("hidden");
-        fileName.textContent = `選択中: ${file.name}`;
-        fileName.classList.remove("hidden");
-        initialMessage.classList.add("hidden");
+      loading.classList.remove("hidden");
+      fileName.textContent = `選択中: ${file.name}`;
+      fileName.classList.remove("hidden");
+      initialMessage.classList.add("hidden");
 
-        try {
-          const arrayBuffer = await file.arrayBuffer();
-          const workbook = XLSX.read(arrayBuffer, { type: "array" });
-          const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer, { type: "array" });
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
-          const headers = jsonData[0] || [];
-          const rows = jsonData.slice(1);
+        const headers = jsonData[0] || [];
+        const rows = jsonData.slice(1);
 
-          const findColumn = (keywords) =>
-            headers.findIndex((header) =>
-              keywords.some((keyword) => header && header.toString().toLowerCase().includes(keyword.toLowerCase()))
-            );
+        const findColumn = (keywords) =>
+          headers.findIndex((header) =>
+            keywords.some((keyword) => header && header.toString().toLowerCase().includes(keyword.toLowerCase()))
+          );
 
-          const managementNumberCol = findColumn(["管理番号","番号","id","no"]);
-          const propertyNameCol = findColumn(["物件名","物件","プロパティ","名称"]);
-          const workTypeCol = findColumn(["作業タイプ","作業種別","type","work type"]);
-          const startTimeCol = findColumn(["開始","start","予定開始","開始時間"]);
-          const endTimeCol = findColumn(["終了","end","予定終了","終了時間"]);
+        const managementNumberCol = findColumn(["管理番号","番号","id","no"]);
+        const propertyNameCol = findColumn(["物件名","物件","プロパティ","名称"]);
+        const startTimeCol = findColumn(["開始","start","予定開始","開始時間"]);
+        const endTimeCol = findColumn(["終了","end","予定終了","終了時間"]);
 
-          const formatDateTime = (v) => (v ? XLSX.SSF.format('yyyy/mm/dd hh:mm', v) : "");
-          const formatRawDate = (v) => v ? XLSX.SSF.parse_date_code(v) : null;
+        const formatDateTime = (v) => (v ? XLSX.SSF.format('yyyy/mm/dd hh:mm', v) : "");
+        const formatRawDate = (v) => v ? XLSX.SSF.parse_date_code(v) : null;
 
-          data = rows
-            .filter((row) => row.some((c) => c !== undefined && c !== ""))
-            .map((row, index) => {
-              const item = {
-                id: index,
-                managementNumber: managementNumberCol >= 0 ? row[managementNumberCol] : `No.${index + 1}`,
-                propertyName: propertyNameCol >= 0 ? row[propertyNameCol] : "未設定",
-                workType: workTypeCol >= 0 ? row[workTypeCol] : "",
-                startTime: startTimeCol >= 0 ? formatDateTime(row[startTimeCol]) : "",
-                endTime: endTimeCol >= 0 ? formatDateTime(row[endTimeCol]) : "",
-                startRaw: startTimeCol >= 0 ? formatRawDate(row[startTimeCol]) : null,
-                endRaw: endTimeCol >= 0 ? formatRawDate(row[endTimeCol]) : null,
-                checks: checkNames.map(name => ({ name, status: 0, completedAt: null })),
-              };
-              return item;
+        data = rows
+          .filter((row) => row.some((c) => c !== undefined && c !== ""))
+          .map((row, index) => {
+            const item = {
+              id: index,
+              managementNumber: managementNumberCol >= 0 ? row[managementNumberCol] : `No.${index + 1}`,
+              propertyName: propertyNameCol >= 0 ? row[propertyNameCol] : "未設定",
+              startTime: startTimeCol >= 0 ? formatDateTime(row[startTimeCol]) : "",
+              endTime: endTimeCol >= 0 ? formatDateTime(row[endTimeCol]) : "",
+              startRaw: startTimeCol >= 0 ? formatRawDate(row[startTimeCol]) : null,
+              endRaw: endTimeCol >= 0 ? formatRawDate(row[endTimeCol]) : null,
+              checks: [],
+            };
+            // 既存のチェック項目があれば、新しいデータにも追加
+            checkNames.forEach(name => {
+              item.checks.push({ name, status: 0, completedAt: null });
             });
-          
-          saveToLocalStorage();
+            return item;
+          });
+        
+        saveToLocalStorage();
 
-          renderChecklist();
-          updateProgress();
-          showSections();
-        } catch (err) {
-          alert("読み込みエラー: " + err.message);
-          console.error("File loading error:", err);
-        } finally {
-          loading.classList.add("hidden");
-        }
-      });
+        renderChecklist();
+        updateProgress();
+        document.getElementById("progress-section").classList.remove("hidden");
+        document.getElementById("add-check-section").classList.remove("hidden");
+        document.getElementById("template-section").classList.remove("hidden");
+      } catch (err) {
+        alert("読み込みエラー: " + err.message);
+      } finally {
+        loading.classList.add("hidden");
+      }
+    });
 
-      // 手動でチェック項目名を追加する機能
-      document.getElementById("add-check-btn").addEventListener("click", () => {
+    // 手動でチェック項目名を追加する機能
+    document.getElementById("add-check-btn").addEventListener("click", () => {
         const newCheckNameInput = document.getElementById("new-check-name");
         const newCheckName = newCheckNameInput.value.trim();
 
         if (newCheckName && !checkNames.includes(newCheckName)) {
-          checkNames.push(newCheckName);
-          data.forEach(item => {
-            item.checks.push({
-              name: newCheckName,
-              status: 0,
-              completedAt: null,
+            checkNames.push(newCheckName);
+            data.forEach(item => {
+                item.checks.push({
+                    name: newCheckName,
+                    status: 0,
+                    completedAt: null,
+                });
             });
-          });
-          saveToLocalStorage();
-          renderChecklist();
-          updateProgress();
-          
-          newCheckNameInput.value = "";
-        } else if (checkNames.includes(newCheckName)) {
-          alert("そのチェック項目は既に存在します。");
-        } else {
-          alert("チェック項目名を入力してください。");
-        }
-      });
-      
-      // チェック状態を切り替える関数
-      window.handleCheck = function(itemId, checkName) {
-        const now = new Date();
-        const nowStr = `${now.getFullYear()}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getDate().toString().padStart(2, '0')} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-        
-        const item = data.find(i => i.id === itemId);
-        if (item) {
-          const check = item.checks.find(c => c.name === checkName);
-          if (check) {
-            check.status = (check.status + 1) % 3;
-            check.completedAt = check.status === 1 ? nowStr : null;
             saveToLocalStorage();
             renderChecklist();
             updateProgress();
-          }
+            
+            newCheckNameInput.value = "";
+        } else if (checkNames.includes(newCheckName)) {
+            alert("そのチェック項目は既に存在します。");
         }
-      };
+    });
+    
+    // チェック状態を切り替える関数
+    function handleCheck(itemId, checkName) {
+      const now = new Date();
+      const nowStr = `${now.getFullYear()}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getDate().toString().padStart(2, '0')} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+      
+      const item = data.find(i => i.id === itemId);
+      if (item) {
+          const check = item.checks.find(c => c.name === checkName);
+          if (check) {
+              check.status = (check.status + 1) % 3;
+              check.completedAt = check.status === 1 ? nowStr : null;
+              saveToLocalStorage();
+              renderChecklist();
+              updateProgress();
+          }
+      }
+    }
 
-      // チェックリストをレンダリングする関数
-      function renderChecklist() {
-        const container = document.getElementById("checklist-container");
-        container.innerHTML = "";
-        data.forEach((item) => {
-          const isCompleted = item.checks.length > 0 && item.checks.every(c => c.status === 1 || c.status === 2);
-          const borderColor = isCompleted ? "border-green-500" : "border-blue-500";
-          const bgColor = isCompleted ? "bg-green-50" : "bg-white";
+    // チェックリストをレンダリングする関数
+    function renderChecklist() {
+      const container = document.getElementById("checklist-container");
+      container.innerHTML = "";
+      data.forEach((item) => {
+        const isCompleted = item.checks.length > 0 && item.checks.every(c => c.status === 1 || c.status === 2);
+        const borderColor = isCompleted ? "border-green-500" : "border-blue-500";
+        const bgColor = isCompleted ? "bg-green-50" : "bg-white";
 
-          const div = document.createElement("div");
-          div.className = `rounded-lg shadow-lg p-4 border-l-4 ${borderColor} ${bgColor}`;
+        const div = document.createElement("div");
+        div.className = `rounded-lg shadow-lg p-4 border-l-4 ${borderColor} ${bgColor}`;
 
-          div.innerHTML = `
-            <div class="flex items-start gap-4">
-              <div class="flex-grow">
-                <span class="font-semibold">${item.managementNumber}</span> ${item.propertyName} ${item.workType ? `(${item.workType})` : ''}
-                <div class="mt-2 space-y-2">
-                  ${item.startTime ? `<div class="text-sm text-blue-600">開始: ${item.startTime}</div>` : ""}
-                  ${item.endTime ? `<div class="text-sm text-red-600">終了: ${item.endTime}</div>` : ""}
-                </div>
+        div.innerHTML = `
+          <div class="flex items-start gap-4">
+            <div class="flex-grow">
+              <span class="font-semibold">${item.managementNumber}</span> ${item.propertyName}
+              <div class="mt-2 space-y-2">
+                ${item.startTime ? `<div class="text-sm text-blue-600">開始: ${item.startTime}</div>` : ""}
+                ${item.endTime ? `<div class="text-sm text-red-600">終了: ${item.endTime}</div>` : ""}
               </div>
             </div>
-            <div class="mt-4 border-t pt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-              ${item.checks.map(check => {
-                  let buttonClass;
-                  let buttonText;
-                  let ariaLabel;
-                  let completedAtHtml = '';
-                  if (check.status === 1) {
-                      buttonClass = "btn-checked";
-                      buttonText = "✔";
-                      ariaLabel = `${check.name}: 完了`;
-                      completedAtHtml = `<div class="text-xs text-gray-500">${check.completedAt || ''}</div>`;
-                  } else if (check.status === 2) {
-                      buttonClass = "btn-unnecessary";
-                      buttonText = "✕";
-                      ariaLabel = `${check.name}: 不要`;
-                  } else {
-                      buttonClass = "btn-unchecked";
-                      buttonText = "□";
-                      ariaLabel = `${check.name}: 未完了`;
-                  }
-                  return `
-                      <div class="flex items-center gap-2">
-                          <button onclick="handleCheck(${item.id}, '${check.name}')" aria-label="${ariaLabel}" class="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-lg ${buttonClass}">
-                              ${buttonText}
-                          </button>
-                          <div>
-                              <div class="text-sm text-gray-700">${check.name}</div>
-                              ${completedAtHtml}
-                          </div>
-                      </div>
-                  `;
-              }).join('')}
-            </div>`;
-          container.appendChild(div);
-        });
-      }
-
-      // 進捗バーとテキストを更新する関数
-      function updateProgress() {
-        const allChecks = data.flatMap(item => item.checks);
-        const completedChecks = allChecks.filter(c => c.status === 1).length;
-        const totalChecks = allChecks.length;
-        const percent = totalChecks ? Math.round((completedChecks / totalChecks) * 100) : 0;
-        document.getElementById("progress-text").textContent = `完了: ${completedChecks} / ${totalChecks}`;
-        document.getElementById("progress-percentage").textContent = `${percent}%`;
-        document.getElementById("progress-bar").style.width = `${percent}%`;
-      }
-
-      // Excelエクスポート機能
-      document.getElementById("export-btn").addEventListener("click", () => {
-        if (!data.length) {
-          alert("データがありません");
-          return;
-        }
-        
-        const exportData = data.map((i) => {
-          const row = {
-            管理番号: i.managementNumber,
-            物件名: i.propertyName,
-            作業タイプ: i.workType,
-            予定開始時間: i.startTime,
-            予定終了時間: i.endTime,
-          };
-          i.checks.forEach(check => {
-              let statusText = "未完了";
-              if (check.status === 1) {
-                  statusText = "完了";
-              } else if (check.status === 2) {
-                  statusText = "不要";
-              }
-              row[check.name] = statusText;
-              row[`${check.name}完了日時`] = check.completedAt || "";
-          });
-          return row;
-        });
-
-        const ws = XLSX.utils.json_to_sheet(exportData);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "チェックリスト");
-        XLSX.writeFile(wb, "チェックリスト.xlsx");
+          </div>
+          <div class="mt-4 border-t pt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+            ${item.checks.map(check => {
+                let buttonClass;
+                let buttonText;
+                let completedAtHtml = '';
+                if (check.status === 1) {
+                    buttonClass = "btn-checked";
+                    buttonText = "✔";
+                    completedAtHtml = `<div class="text-xs text-gray-500">${check.completedAt || ''}</div>`;
+                } else if (check.status === 2) {
+                    buttonClass = "btn-unnecessary";
+                    buttonText = "✕";
+                } else {
+                    buttonClass = "btn-unchecked";
+                    buttonText = "□";
+                }
+                return `
+                    <div class="flex items-center gap-2">
+                        <button onclick="handleCheck(${item.id}, '${check.name}')" class="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-lg ${buttonClass}">
+                            ${buttonText}
+                        </button>
+                        <div>
+                            <div class="text-sm text-gray-700">${check.name}</div>
+                            ${completedAtHtml}
+                        </div>
+                    </div>
+                `;
+            }).join('')}
+          </div>`;
+        container.appendChild(div);
       });
+    }
+
+    // 進捗バーとテキストを更新する関数
+    function updateProgress() {
+      const allChecks = data.flatMap(item => item.checks);
+      const completedChecks = allChecks.filter(c => c.status === 1).length;
+      const totalChecks = allChecks.length;
+      const percent = totalChecks ? Math.round((completedChecks / totalChecks) * 100) : 0;
+      document.getElementById("progress-text").textContent = `完了: ${completedChecks} / ${totalChecks}`;
+      document.getElementById("progress-percentage").textContent = `${percent}%`;
+      document.getElementById("progress-bar").style.width = `${percent}%`;
+    }
+
+    // Excelエクスポート機能
+    document.getElementById("export-btn").addEventListener("click", () => {
+      if (!data.length) return;
       
-      // localStorageにデータを保存する関数
-      function saveToLocalStorage() {
-        try {
-          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data));
-          localStorage.setItem(CHECK_NAMES_KEY, JSON.stringify(checkNames));
-        } catch (e) {
-          console.error("LocalStorage save error:", e);
-          alert("データの保存に失敗しました。ストレージ容量を確認してください。");
-        }
-      }
+      const exportData = data.map((i) => {
+        const row = {
+          管理番号: i.managementNumber,
+          物件名: i.propertyName,
+          予定開始時間: i.startTime,
+          予定終了時間: i.endTime,
+        };
+        i.checks.forEach(check => {
+            let statusText = "未完了";
+            if (check.status === 1) {
+                statusText = "完了";
+            } else if (check.status === 2) {
+                statusText = "不要";
+            }
+            row[check.name] = statusText;
+            row[`${check.name}完了日時`] = check.completedAt || "";
+        });
+        return row;
+      });
 
-      // localStorageからデータを読み込む関数
-      function loadFromLocalStorage() {
-        const savedData = localStorage.getItem(LOCAL_STORAGE_KEY);
-        const savedCheckNames = localStorage.getItem(CHECK_NAMES_KEY);
-        if (savedData) {
-          try {
-            data = JSON.parse(savedData);
-            checkNames = savedCheckNames ? JSON.parse(savedCheckNames) : [];
-          } catch (e) {
-            console.error("Failed to load data from localStorage", e);
-            localStorage.removeItem(LOCAL_STORAGE_KEY);
-            localStorage.removeItem(CHECK_NAMES_KEY);
-          }
-        }
-      }
+      const ws = XLSX.utils.json_to_sheet(exportData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "チェックリスト");
+      XLSX.writeFile(wb, "チェックリスト.xlsx");
+    });
+    
+    // localStorageにデータを保存する関数
+    function saveToLocalStorage() {
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(data));
+        localStorage.setItem(CHECK_NAMES_KEY, JSON.stringify(checkNames));
+    }
 
-      // Word一括出力機能
-      document.getElementById("export-docx-zip-btn").addEventListener("click", async () => {
+    // Word一括出力機能
+    document.getElementById("export-docx-zip-btn").addEventListener("click", async () => {
         if (!data.length) {
-          alert("データがありません");
-          return;
+            alert("データがありません");
+            return;
         }
         
         const zip = new JSZip();
@@ -367,92 +351,77 @@
         const templateFile = document.getElementById("template-upload").files[0];
         
         try {
-          if (templateFile) {
-            templateContent = await templateFile.arrayBuffer();
-          } else {
-            const response = await fetch("./harigami.docx");
-            if (!response.ok) {
-              throw new Error("Template not found");
+            if (templateFile) {
+                templateContent = await templateFile.arrayBuffer();
+            } else {
+                templateContent = await fetch("./harigami.docx").then(res => res.arrayBuffer());
             }
-            templateContent = await response.arrayBuffer();
-          }
         } catch (e) {
-          alert("テンプレートファイルの読み込みに失敗しました。`harigami.docx`が存在するか確認してください。");
-          console.error("Template loading error:", e);
-          return;
+            alert("テンプレートファイルの読み込みに失敗しました。`harigami.docx`が存在するか確認してください。");
+            return;
         }
 
         const weekdays = ["日", "月", "火", "水", "木", "金", "土"];
         const outputPromises = data.map(async (item) => {
-          try {
-            const zipTemplate = new PizZip(templateContent);
-            const doc = new window.docxtemplater(zipTemplate, {
-              paragraphLoop: true,
-              linebreaks: true,
-            });
+            try {
+                const zipTemplate = new PizZip(templateContent);
+                const doc = new window.docxtemplater(zipTemplate, {
+                    paragraphLoop: true,
+                    linebreaks: true,
+                });
 
-            let dateStr = "";
-            let startTime = "";
-            let endTime = "";
-            let monthForFilename = "";
-            
-            if (item.startRaw) {
-              const dt = new Date(item.startRaw.y, item.startRaw.m - 1, item.startRaw.d, item.startRaw.H, item.startRaw.M, item.startRaw.S);
-              if (!isNaN(dt.getTime())) {
-                const month = dt.getMonth() + 1;
-                const day = dt.getDate();
-                const weekday = weekdays[dt.getDay()];
-                dateStr = `${month}月${day}日（${weekday}）`;
-                startTime = dt.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
-                monthForFilename = `${month}月`;
-              }
-            }
-            if (item.endRaw) {
-              const dt = new Date(item.endRaw.y, item.endRaw.m - 1, item.endRaw.d, item.endRaw.H, item.endRaw.M, item.endRaw.S);
-              if (!isNaN(dt.getTime())) {
-                endTime = dt.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
-              }
-            }
+                let dateStr = "";
+                let startTime = "";
+                let endTime = "";
+                let monthForFilename = "";
+                
+                if (item.startRaw) {
+                    const dt = new Date(item.startRaw);
+                    if (!isNaN(dt.getTime())) {
+                        const month = dt.getMonth() + 1;
+                        const day = dt.getDate();
+                        const weekday = weekdays[dt.getDay()];
+                        dateStr = `${month}月${day}日（${weekday}）`;
+                        startTime = dt.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
+                        monthForFilename = `${month}月`;
+                    }
+                }
+                if (item.endRaw) {
+                    const dt = new Date(item.endRaw);
+                    if (!isNaN(dt.getTime())) {
+                        endTime = dt.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
+                    }
+                }
 
-            doc.setData({
-              "日付": dateStr,
-              "予定開始": startTime,
-              "予定終了": endTime,
-              "物件名": item.propertyName || ""
-            });
-            
-            doc.render();
-            const out = doc.getZip().generate({ type: "blob" });
-            const safeManagementNumber = (item.managementNumber || "").toString().replace(/[^a-zA-Z0-9一-龯ぁ-んァ-ヶー_\-]/g,"_");
-            const safePropertyName = (item.propertyName || "document").replace(/[^a-zA-Z0-9一-龯ぁ-んァ-ヶー_\-]/g,"_");
-            const filename = `${monthForFilename}_${safeManagementNumber}_${safePropertyName}.docx`;
-            zip.file(filename, out);
-          } catch (err) {
-            console.error("Word generation error for item:", item, err);
-          }
+                doc.setData({
+                    "日付": dateStr,
+                    "予定開始": startTime,
+                    "予定終了": endTime,
+                    "物件名": item.propertyName || ""
+                });
+                
+                doc.render();
+                const out = doc.getZip().generate({ type: "blob" });
+                const safeManagementNumber = item.managementNumber.toString().replace(/[^a-zA-Z0-9一-龯ぁ-んァ-ヶー_\-]/g,"_");
+                const safePropertyName = (item.propertyName || "document").replace(/[^a-zA-Z0-9一-龯ぁ-んァ-ヶー_\-]/g,"_");
+                const filename = `${monthForFilename}_${safeManagementNumber}_${safePropertyName}.docx`;
+                zip.file(filename, out);
+            } catch (err) {
+                console.error("差し込みエラー:", err);
+            }
         });
 
         await Promise.all(outputPromises);
         const zipBlob = await zip.generateAsync({ type: "blob" });
         saveAs(zipBlob, "貼紙_documents.zip");
+    });
+
+    // Service Worker登録
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("sw.js");
       });
-
-      // セクションを表示する関数
-      function showSections() {
-        document.getElementById("progress-section").classList.remove("hidden");
-        document.getElementById("add-check-section").classList.remove("hidden");
-        document.getElementById("template-section").classList.remove("hidden");
-      }
-
-      // Service Worker登録
-      if ("serviceWorker" in navigator) {
-        window.addEventListener("load", () => {
-          navigator.serviceWorker.register("sw.js").catch(err => {
-            console.error("Service Worker registration failed:", err);
-          });
-        });
-      }
-    })();
+    }
   </script>
 </body>
 </html>
