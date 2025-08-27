@@ -5,6 +5,7 @@
   <title>チェックリスト</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 </head>
 <body class="bg-gray-100 p-4">
   <h1 class="text-2xl font-bold mb-4">チェックリスト管理</h1>
@@ -30,6 +31,14 @@
 
   <!-- 進捗表示 -->
   <div id="progress" class="mb-4 font-bold"></div>
+
+  <!-- エクスポートボタン -->
+  <div class="mb-4 flex gap-2">
+    <button onclick="exportToWord()" 
+      class="bg-green-500 text-white px-4 py-2 rounded">Word出力</button>
+    <button onclick="exportToExcel()" 
+      class="bg-purple-500 text-white px-4 py-2 rounded">Excel出力</button>
+  </div>
 
   <!-- チェックリスト本体 -->
   <div id="checklist-container" class="space-y-4"></div>
@@ -205,6 +214,45 @@
       hideDone = !hideDone;
       document.getElementById("toggleDoneBtn").innerText = hideDone ? "完了案件を表示" : "完了案件を隠す";
       renderChecklist();
+    }
+
+    // --- Word出力 ---
+    function exportToWord(){
+      let content = "";
+      data.forEach(item=>{
+        content += `■ ${item.managementNumber} ${item.propertyName} [${item.workType||""}]\n`;
+        item.checks.forEach(c=>{
+          const sym=c.state===1?"✔":c.state===2?"✖":"";
+          content += `　${sym} ${c.name} ${c.date||""}\n`;
+        });
+        content += "\n";
+      });
+      const blob = new Blob([content], {type: "application/msword"});
+      saveAs(blob, "checklist.doc");
+    }
+
+    // --- Excel出力 ---
+    function exportToExcel(){
+      const ws_data = [["管理番号","物件名","作業タイプ","予定開始","予定終了","チェック項目","状態","日時"]];
+      data.forEach(item=>{
+        item.checks.forEach(c=>{
+          const sym=c.state===1?"✔":c.state===2?"✖":"";
+          ws_data.push([
+            item.managementNumber,
+            item.propertyName,
+            item.workType,
+            item.startTime,
+            item.endTime,
+            c.name,
+            sym,
+            c.date
+          ]);
+        });
+      });
+      const ws = XLSX.utils.aoa_to_sheet(ws_data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Checklist");
+      XLSX.writeFile(wb, "checklist.xlsx");
     }
 
     window.onload = loadFromLocalStorage;
