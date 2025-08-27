@@ -188,12 +188,12 @@ function exportExcel(){
 // Word出力
 async function exportWord() {
     if (data.length === 0) {
-        alert("データがありません");
+        alert("Excelデータを先に読み込んでください。");
         return;
     }
     const file = document.getElementById("wordTemplate").files[0];
     if (!file) {
-        alert("テンプレートを選択してください");
+        alert("Wordテンプレートを選択してください。");
         return;
     }
 
