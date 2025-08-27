@@ -18,19 +18,19 @@
     <div class="mb-4">
       <div class="flex flex-row flex-wrap items-center space-x-2 mb-2">
         <label class="flex items-center space-x-2 border p-2 rounded bg-white cursor-pointer flex-shrink-0">
-            <span class="text-gray-500">Excelファイルを選択</span>
+            <span class="text-gray-500">作業指示書一覧ファイルを選択</span>
             <input type="file" id="fileInput" class="hidden" onchange="updateFileName('fileInput', 'excelFileName')" />
         </label>
         <span id="excelFileName" class="text-sm text-gray-600">選択されていません</span>
-        <button onclick="exportExcel()" class="bg-green-500 text-white px-4 py-2 rounded flex-shrink-0">Excel出力</button>
+        <button onclick="exportExcel()" class="bg-green-500 text-white px-4 py-2 rounded flex-shrink-0">チェックリスト出力</button>
       </div>
       <div class="flex flex-row flex-wrap items-center space-x-2">
         <label class="flex items-center space-x-2 border p-2 rounded bg-white cursor-pointer flex-shrink-0">
-            <span class="text-gray-500">Wordテンプレートを選択（省略可）</span>
+            <span class="text-gray-500">貼紙テンプレートを選択（省略可）</span>
             <input type="file" id="wordTemplate" class="hidden" onchange="updateFileName('wordTemplate', 'wordFileName')" />
         </label>
         <span id="wordFileName" class="text-sm text-gray-600">選択されていません</span>
-        <button onclick="exportWord()" class="bg-blue-500 text-white px-4 py-2 rounded flex-shrink-0">Word出力</button>
+        <button onclick="exportWord()" class="bg-blue-500 text-white px-4 py-2 rounded flex-shrink-0">貼紙出力</button>
       </div>
     </div>
     <div id="progressContainer" class="mb-4 hidden">
