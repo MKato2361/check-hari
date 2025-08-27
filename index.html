@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <title>チェックリスト管理ツール</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#4f46e5">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
@@ -20,7 +22,7 @@
             <input type="file" id="fileInput" class="hidden" onchange="updateFileName('fileInput', 'excelFileName')" />
         </label>
         <span id="excelFileName" class="text-sm text-gray-600">選択されていません</span>
-        <button onclick="exportExcel()" class="bg-green-500 text-white px-4 py-2 rounded flex-shrink-0">チェックリスト出力</button>
+        <button onclick="exportExcel()" class="bg-green-500 text-white px-4 py-2 rounded flex-shrink-0">Excel出力</button>
       </div>
       <div class="flex flex-row flex-wrap items-center space-x-2">
         <label class="flex items-center space-x-2 border p-2 rounded bg-white cursor-pointer flex-shrink-0">
@@ -28,7 +30,7 @@
             <input type="file" id="wordTemplate" class="hidden" onchange="updateFileName('wordTemplate', 'wordFileName')" />
         </label>
         <span id="wordFileName" class="text-sm text-gray-600">選択されていません</span>
-        <button onclick="exportWord()" class="bg-blue-500 text-white px-4 py-2 rounded flex-shrink-0">貼紙出力</button>
+        <button onclick="exportWord()" class="bg-blue-500 text-white px-4 py-2 rounded flex-shrink-0">Word出力</button>
       </div>
     </div>
     <div id="progressContainer" class="mb-4 hidden">
@@ -48,6 +50,13 @@
 <script>
 let data = [];
 let headers = [];
+
+// PWA: Service Worker登録
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js')
+    .then(reg => console.log('Service Worker登録成功:', reg))
+    .catch(err => console.log('Service Worker登録失敗:', err));
+}
 
 // ファイル名表示を更新
 function updateFileName(inputId, spanId) {
