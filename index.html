@@ -17,30 +17,28 @@
   <h1 class="text-2xl font-bold mb-4">チェックリスト管理ツール</h1>
   
   <!-- ファイル選択と出力ボタン -->
-  <div class="mb-4">
-    <div class="flex flex-row flex-wrap items-center space-x-2 mb-2">
-      <label class="flex items-center space-x-2 border p-2 rounded bg-white cursor-pointer flex-shrink-0">
-          <span class="text-gray-500">Excelファイルを選択</span>
+  <div class="mb-4 space-y-2">
+    <div class="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-2">
+      <label class="flex items-center space-x-2 border p-2 rounded bg-white cursor-pointer flex-shrink-0 w-full sm:w-auto justify-center">
+          <span class="text-gray-500 text-sm sm:text-base">Excelファイルを選択</span>
           <input type="file" id="fileInput" class="hidden" onchange="updateFileName('fileInput','excelFileName')" />
       </label>
-      <span id="excelFileName" class="text-sm text-gray-600">選択されていません</span>
-      <button onclick="exportExcel()" class="bg-green-500 text-white px-4 py-2 rounded flex-shrink-0">チェックリスト出力</button>
+      <span id="excelFileName" class="text-sm text-gray-600 truncate w-full sm:w-auto">選択されていません</span>
+      <button onclick="exportExcel()" class="flex-grow sm:flex-grow-0 bg-green-500 text-white py-3 sm:px-4 rounded text-base sm:text-lg">チェックリスト出力</button>
     </div>
-    <div class="flex flex-row flex-wrap items-center space-x-2">
-      <label class="flex items-center space-x-2 border p-2 rounded bg-white cursor-pointer flex-shrink-0">
-          <span class="text-gray-500">Wordテンプレートを選択（省略可）</span>
+    <div class="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-2">
+      <label class="flex items-center space-x-2 border p-2 rounded bg-white cursor-pointer flex-shrink-0 w-full sm:w-auto justify-center">
+          <span class="text-gray-500 text-sm sm:text-base">Wordテンプレートを選択（省略可）</span>
           <input type="file" id="wordTemplate" class="hidden" onchange="updateFileName('wordTemplate','wordFileName')" />
       </label>
-      <span id="wordFileName" class="text-sm text-gray-600">選択されていません</span>
-      <button onclick="exportWord()" class="bg-blue-500 text-white px-4 py-2 rounded flex-shrink-0">貼紙出力</button>
+      <span id="wordFileName" class="text-sm text-gray-600 truncate w-full sm:w-auto">選択されていません</span>
+      <button onclick="exportWord()" class="flex-grow sm:flex-grow-0 bg-blue-500 text-white py-3 sm:px-4 rounded text-base sm:text-lg">貼紙出力</button>
     </div>
   </div>
 
   <!-- 完了案件折りたたみボタン -->
-  <div class="mb-4 flex items-center space-x-2">
-    <button id="toggleCompletedBtn" onclick="toggleCompletedAll()" class="bg-gray-600 text-white px-4 py-2 rounded">
-      完了案件を折りたたむ
-    </button>
+  <div class="mb-4 flex justify-center sm:justify-start">
+    <button id="toggleCompletedBtn" onclick="toggleCompletedAll()" class="bg-gray-600 text-white px-4 py-2 rounded text-base sm:text-lg">完了案件を折りたたむ</button>
   </div>
 
   <!-- 進捗バー -->
@@ -53,9 +51,9 @@
   <div id="message" class="mb-4 text-red-500"></div>
 
   <!-- 新規チェック項目追加 -->
-  <div class="mb-4 flex items-center space-x-2">
-    <input type="text" id="newCheckItem" placeholder="新しいチェック項目名" class="border p-2 rounded flex-grow"/>
-    <button onclick="addCheckItem()" class="bg-purple-500 text-white px-4 py-2 rounded flex-shrink-0">チェック項目追加</button>
+  <div class="mb-4 flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-2">
+    <input type="text" id="newCheckItem" placeholder="新しいチェック項目名" class="border p-2 rounded flex-grow text-base sm:text-lg w-full sm:w-auto"/>
+    <button onclick="addCheckItem()" class="flex-grow sm:flex-grow-0 bg-purple-500 text-white py-3 sm:px-4 rounded text-base sm:text-lg">チェック項目追加</button>
   </div>
 
   <div id="checklist-container" class="space-y-4"></div>
