@@ -209,7 +209,7 @@ async function exportWord() {
             doc = new window.docxtemplater(zip, { paragraphLoop: true, linebreaks: true });
         } catch (err) {
             console.error("テンプレート読み込みエラー:", err);
-            alert("テンプレート読み込みエラー");
+            document.getElementById("message").innerText = "テンプレート読み込みエラー: " + err.message;
             return;
         }
 
@@ -228,7 +228,7 @@ async function exportWord() {
             doc.render();
         } catch (err) {
             console.error("ドキュメント生成エラー:", err);
-            alert("ドキュメント生成エラー");
+            document.getElementById("message").innerText = `ドキュメント生成エラー: ${item.propertyName} - ` + err.message;
             continue; // 失敗しても次の項目に進む
         }
         
@@ -242,6 +242,9 @@ async function exportWord() {
     
     zipOut.generateAsync({ type: "blob" }).then(function(content) {
         saveAs(content, "word_outputs.zip");
+    }).catch(err => {
+        console.error("ZIPファイル生成エラー:", err);
+        document.getElementById("message").innerText = "ZIPファイル生成エラー: " + err.message;
     });
 }
 </script>
