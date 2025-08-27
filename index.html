@@ -1,19 +1,19 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <title>チェックリスト管理ツール</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/pizzip@3.1.5/dist/pizzip.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/docxtemplater@3.42.2/build/docxtemplater.js"></script>
+  <meta charset="UTF-8" />
+  <title>チェックリスト管理ツール</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pizzip@3.1.5/dist/pizzip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/docxtemplater@3.42.2/build/docxtemplater.js"></script>
 </head>
 <body class="bg-gray-100 p-4">
-  <div class="max-w-4xl mx-auto">
-    <h1 class="text-2xl font-bold mb-4">チェックリスト管理ツール</h1>
-    <div class="mb-4">
+  <div class="max-w-4xl mx-auto">
+    <h1 class="text-2xl font-bold mb-4">チェックリスト管理ツール</h1>
+    <div class="mb-4">
       <div class="flex flex-row flex-wrap items-center space-x-2 mb-2">
         <label class="flex items-center space-x-2 border p-2 rounded bg-white cursor-pointer flex-shrink-0">
             <span class="text-gray-500">ファイルを選択</span>
@@ -31,19 +31,19 @@
         <button onclick="exportWord()" class="bg-blue-500 text-white px-4 py-2 rounded flex-shrink-0">Word出力</button>
       </div>
     </div>
-    <div id="progressContainer" class="mb-4 hidden">
-      <div class="w-full bg-gray-300 rounded">
-        <div id="progressBar" class="bg-green-500 text-xs leading-none py-1 text-center text-white rounded" style="width:0%">0%</div>
-      </div>
-      <div id="progressText" class="text-sm mt-1"></div>
-    </div>
-    <div id="message" class="mb-4 text-red-500"></div>
-    <div class="mb-4 flex items-center space-x-2">
-      <input type="text" id="newCheckItem" placeholder="新しいチェック項目名" class="border p-2 rounded flex-grow"/>
-      <button onclick="addCheckItem()" class="bg-purple-500 text-white px-4 py-2 rounded flex-shrink-0">チェック項目追加</button>
-    </div>
-    <div id="checklist-container" class="space-y-4"></div>
-  </div>
+    <div id="progressContainer" class="mb-4 hidden">
+      <div class="w-full bg-gray-300 rounded">
+        <div id="progressBar" class="bg-green-500 text-xs leading-none py-1 text-center text-white rounded" style="width:0%">0%</div>
+      </div>
+      <div id="progressText" class="text-sm mt-1"></div>
+    </div>
+    <div id="message" class="mb-4 text-red-500"></div>
+    <div class="mb-4 flex items-center space-x-2">
+      <input type="text" id="newCheckItem" placeholder="新しいチェック項目名" class="border p-2 rounded flex-grow"/>
+      <button onclick="addCheckItem()" class="bg-purple-500 text-white px-4 py-2 rounded flex-shrink-0">チェック項目追加</button>
+    </div>
+    <div id="checklist-container" class="space-y-4"></div>
+  </div>
 
 <script>
 let data = [];
@@ -58,154 +58,166 @@ function updateFileName(inputId, spanId) {
 // Excel読み込み
 document.getElementById("fileInput").addEventListener("change", handleFile, false);
 function handleFile(e){
-  const file = e.target.files[0];
-  const reader = new FileReader();
-  reader.onload = function(evt){
-    const wb = XLSX.read(evt.target.result, {type:"binary", cellDates:true, raw:true});
-    const ws = wb.Sheets[wb.SheetNames[0]];
-    const json = XLSX.utils.sheet_to_json(ws, {header:1, defval:""});
-    headers = json[0];
-    const managementIdx=headers.findIndex(h=>h.includes("管理番号"));
-    const propertyIdx=headers.findIndex(h=>h.includes("物件名"));
-    const workTypeIdx=headers.findIndex(h=>h.includes("作業タイプ"));
-    const startIdx=headers.findIndex(h=>h.includes("予定開始"));
-    const endIdx=headers.findIndex(h=>h.includes("予定終了"));
-    data=[];
-    for(let i=1;i<json.length;i++){
-      if(json[i].length===0) continue;
-      data.push({
-        id:i,
-        managementNumber: json[i][managementIdx]||"",
-        propertyName: json[i][propertyIdx]||"",
-        workType: json[i][workTypeIdx]||"",
-        startTime: json[i][startIdx]||"",
-        endTime: json[i][endIdx]||"",
-        checks:[]
-      });
-    }
-    renderChecklist();
-  };
-  reader.readAsBinaryString(file);
+  const file = e.target.files[0];
+  const reader = new FileReader();
+  reader.onload = function(evt){
+    const wb = XLSX.read(evt.target.result, {type:"binary", cellDates:true, raw:true});
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const json = XLSX.utils.sheet_to_json(ws, {header:1, defval:""});
+    headers = json[0];
+    const managementIdx=headers.findIndex(h=>h.includes("管理番号"));
+    const propertyIdx=headers.findIndex(h=>h.includes("物件名"));
+    const workTypeIdx=headers.findIndex(h=>h.includes("作業タイプ"));
+    const startIdx=headers.findIndex(h=>h.includes("予定開始"));
+    const endIdx=headers.findIndex(h=>h.includes("予定終了"));
+    data=[];
+    for(let i=1;i<json.length;i++){
+      if(json[i].length===0) continue;
+      data.push({
+        id:i,
+        managementNumber: json[i][managementIdx]||"",
+        propertyName: json[i][propertyIdx]||"",
+        workType: json[i][workTypeIdx]||"",
+        startTime: json[i][startIdx]||"",
+        endTime: json[i][endIdx]||"",
+        checks:[]
+      });
+    }
+    renderChecklist();
+  };
+  reader.readAsBinaryString(file);
 }
 
 // チェック項目追加
 function addCheckItem(){
-  const name=document.getElementById("newCheckItem").value.trim();
-  if(!name) return;
-  data.forEach(item=>{
-    item.checks.push({name, state:0, date:""});
-  });
-  document.getElementById("newCheckItem").value="";
-  renderChecklist();
+  const name=document.getElementById("newCheckItem").value.trim();
+  if(!name) return;
+  data.forEach(item=>{
+    item.checks.push({name, state:0, date:""});
+  });
+  document.getElementById("newCheckItem").value="";
+  renderChecklist();
 }
 
 // チェック操作
 function handleCheck(itemId, idx){
-  const item=data.find(d=>d.id===itemId);
-  const check=item.checks[idx];
-  check.state=(check.state+1)%3;
-  if(check.state===1){
+  const item=data.find(d=>d.id===itemId);
+  const check=item.checks[idx];
+  check.state=(check.state+1)%3;
+  if(check.state===1){
     const now = new Date();
     const YYYY = now.getFullYear();
     const MM = ('0' + (now.getMonth() + 1)).slice(-2);
     const DD = ('0' + now.getDate()).slice(-2);
     const HH = ('0' + now.getHours()).slice(-2);
     const mm = ('0' + now.getMinutes()).slice(-2);
-    check.date = `${YYYY}/${MM}/${DD} ${HH}:${mm}`;
-  } else if(check.state===0){
-    check.date="";
-  }
-  renderChecklist();
+    check.date = `${YYYY}/${MM}/${DD} ${HH}:${mm}`;
+  } else if(check.state===0){
+    check.date="";
+  }
+  renderChecklist();
 }
 
 // レンダリング
 function renderChecklist(){
-  const cont=document.getElementById("checklist-container");
-  cont.innerHTML="";
-  data.forEach(item=>{
-    const isAllDone = item.checks.length > 0 && item.checks.every(c => c.state === 1 || c.state === 2);
+  const cont=document.getElementById("checklist-container");
+  cont.innerHTML="";
+  const dayOfWeek = ['日','月','火','水','木','金','土'];
+  const formatDateTime = (dt) => {
+      if (!dt) return "-";
+      const d = new Date(dt);
+      const YYYY = d.getFullYear();
+      const M = d.getMonth() + 1;
+      const D = d.getDate();
+      const day = dayOfWeek[d.getDay()];
+      const HH = ('0' + d.getHours()).slice(-2);
+      const mm = ('0' + d.getMinutes()).slice(-2);
+      return `${YYYY}/${M}/${D}(${day}) ${HH}:${mm}`;
+  };
 
-    const div=document.createElement("div");
-    div.className=`bg-white p-4 rounded shadow border-2 ${isAllDone ? "border-green-500" : "border-gray-200"}`;
+  data.forEach(item=>{
+    const isAllDone = item.checks.length > 0 && item.checks.every(c => c.state === 1 || c.state === 2);
 
-    const scheduleHtml = `
-      <div class="text-sm text-gray-600">
-        開始: ${item.startTime || "-"}　
-        終了: ${item.endTime || "-"}
-      </div>`;
+    const div=document.createElement("div");
+    div.className=`bg-white p-4 rounded shadow border-2 ${isAllDone ? "border-green-500" : "border-gray-200"}`;
 
-    let checksHtml="";
-    item.checks.forEach((c,idx)=>{
-      const sym=c.state===1?"✔":c.state===2?"✖":"";
-      const color=c.state===1?"bg-green-500":c.state===2?"bg-red-500":"bg-gray-200";
-      // Use flexbox for each checklist item to ensure alignment
-      checksHtml+=`
+    const scheduleHtml = `
+      <div class="text-sm text-gray-600">
+        開始: ${formatDateTime(item.startTime)}　
+        終了: ${formatDateTime(item.endTime)}
+      </div>`;
+
+    let checksHtml="";
+    item.checks.forEach((c,idx)=>{
+      const sym=c.state===1?"✔":c.state===2?"✖":""; 
+      const color=c.state===1?"bg-green-500":c.state===2?"bg-red-500":"bg-gray-200";
+      checksHtml+=`
         <div class="flex items-center space-x-2 my-1">
-        <button onclick="handleCheck(${item.id},${idx})" 
-          class="w-8 h-8 rounded-full ${color} text-white text-sm flex-shrink-0">${sym}</button>
-        <span class="ml-2">${c.name}</span>
-        ${c.date?`<span class="ml-auto text-sm text-gray-500">${c.date}</span>`:""}
+          <button onclick="handleCheck(${item.id},${idx})" 
+            class="w-8 h-8 rounded-full ${color} text-white text-sm flex-shrink-0">${sym}</button>
+          <span class="ml-2">${c.name}</span>
+          ${c.date?`<span class="ml-auto text-sm text-gray-500">${c.date}</span>`:""}
         </div>`;
-    });
+    });
 
-    const workTypeStr = item.workType ? `[${item.workType}]` : "";
-    const title = [item.managementNumber, item.propertyName, workTypeStr].filter(Boolean).join(" ");
+    const workTypeStr = item.workType ? `[${item.workType}]` : "";
+    const title = [item.managementNumber, item.propertyName, workTypeStr].filter(Boolean).join(" ");
 
-    div.innerHTML=`
-      <div class="font-bold text-lg">
-        ${title}
-      </div>
-      ${scheduleHtml}
-      <div class="ml-4 mt-2">
-        ${checksHtml || "<span class='text-gray-400 text-sm'>チェック項目なし</span>"}
-      </div>`;
-    cont.appendChild(div);
-  });
-  updateProgress();
+    div.innerHTML=`
+      <div class="font-bold text-lg">
+        ${title}
+      </div>
+      ${scheduleHtml}
+      <div class="ml-4 mt-2">
+        ${checksHtml || "<span class='text-gray-400 text-sm'>チェック項目なし</span>"}
+      </div>`;
+    cont.appendChild(div);
+  });
+  updateProgress();
 }
 
 // 進捗バー
 function updateProgress(){
-  let total=0, done=0;
-  data.forEach(item=>{
-    total+=item.checks.length;
-    done+=item.checks.filter(c=>c.state===1).length;
-  });
-  const percent= total===0?0:Math.round(done/total*100);
-  document.getElementById("progressContainer").classList.remove("hidden");
-  document.getElementById("progressBar").style.width=percent+"%";
-  document.getElementById("progressBar").innerText=percent+"%";
-  document.getElementById("progressText").innerText=`完了 ${done} / ${total}`;
+  let total=0, done=0;
+  data.forEach(item=>{
+    total+=item.checks.length;
+    done+=item.checks.filter(c=>c.state===1).length;
+  });
+  const percent= total===0?0:Math.round(done/total*100);
+  document.getElementById("progressContainer").classList.remove("hidden");
+  document.getElementById("progressBar").style.width=percent+"%";
+  document.getElementById("progressBar").innerText=percent+"%";
+  document.getElementById("progressText").innerText=`完了 ${done} / ${total}`;
 }
 
 // Excel出力
 function exportExcel(){
-  if(data.length===0){ alert("データがありません"); return; }
-  const ws_data=[["管理番号","物件名","作業タイプ","予定開始","予定終了"]];
-  let checkNames=[];
-  data.forEach(item=>{
-    item.checks.forEach(c=>{
-      if(!checkNames.includes(c.name)) checkNames.push(c.name);
-    });
-  });
-  checkNames.forEach(name=>{
-    ws_data[0].push(name+" 状態");
-    ws_data[0].push(name+" 日時");
-  });
-  data.forEach(item=>{
-    const row=[item.managementNumber,item.propertyName,item.workType,item.startTime,item.endTime];
-    checkNames.forEach(name=>{
-      const c=item.checks.find(x=>x.name===name);
-      row.push(c? (c.state===1?"✔":c.state===2?"✖":""):"");
-      row.push(c?c.date:"");
-    });
-    ws_data.push(row);
-  });
-  const ws=XLSX.utils.aoa_to_sheet(ws_data);
-  const wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb,ws,"Sheet1");
-  const wbout=XLSX.write(wb,{bookType:"xlsx", type:"array"});
-  saveAs(new Blob([wbout],{type:"application/octet-stream"}),"checklist.xlsx");
+  if(data.length===0){ alert("データがありません"); return; }
+  const ws_data=[["管理番号","物件名","作業タイプ","予定開始","予定終了"]];
+  let checkNames=[];
+  data.forEach(item=>{
+    item.checks.forEach(c=>{
+      if(!checkNames.includes(c.name)) checkNames.push(c.name);
+    });
+  });
+  checkNames.forEach(name=>{
+    ws_data[0].push(name+" 状態");
+    ws_data[0].push(name+" 日時");
+  });
+  data.forEach(item=>{
+    const row=[item.managementNumber,item.propertyName,item.workType,item.startTime,item.endTime];
+    checkNames.forEach(name=>{
+      const c=item.checks.find(x=>x.name===name);
+      row.push(c? (c.state===1?"✔":c.state===2?"✖":""):"");
+      row.push(c?c.date:"");
+    });
+    ws_data.push(row);
+  });
+  const ws=XLSX.utils.aoa_to_sheet(ws_data);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,"Sheet1");
+  const wbout=XLSX.write(wb,{bookType:"xlsx", type:"array"});
+  saveAs(new Blob([wbout],{type:"application/octet-stream"}),"checklist.xlsx");
 }
 
 // Word出力
@@ -223,7 +235,6 @@ async function exportWord() {
     const content = await file.arrayBuffer();
     const zipOut = new JSZip();
     
-    // 日付と時刻のフォーマット関数を定義
     const dayOfWeek = ['日曜日', '月曜日', '火曜日', '水曜日', '木曜日', '金曜日', '土曜日'];
     const h = (d) => ('0' + d.getHours()).slice(-2);
     const m = (d) => ('0' + d.getMinutes()).slice(-2);
@@ -283,3 +294,4 @@ async function exportWord() {
 </script>
 </body>
 </html>
+
