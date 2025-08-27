@@ -13,11 +13,11 @@
 <body class="bg-gray-100 p-4">
   <div class="max-w-4xl mx-auto">
     <h1 class="text-2xl font-bold mb-4">チェックリスト管理ツール</h1>
-    <div class="mb-4 space-x-2 flex flex-wrap gap-2">
-      <input type="file" id="fileInput" class="border p-2" />
-      <button onclick="exportExcel()" class="bg-green-500 text-white px-4 py-2 rounded">Excel出力</button>
-      <input type="file" id="wordTemplate" class="border p-2" />
-      <button onclick="exportWord()" class="bg-blue-500 text-white px-4 py-2 rounded">Word出力</button>
+    <div class="mb-4 flex flex-row flex-wrap items-center space-x-2">
+      <input type="file" id="fileInput" class="border p-2 flex-shrink-0" />
+      <button onclick="exportExcel()" class="bg-green-500 text-white px-4 py-2 rounded flex-shrink-0">Excel出力</button>
+      <input type="file" id="wordTemplate" class="border p-2 flex-shrink-0" />
+      <button onclick="exportWord()" class="bg-blue-500 text-white px-4 py-2 rounded flex-shrink-0">Word出力</button>
     </div>
     <div id="progressContainer" class="mb-4 hidden">
       <div class="w-full bg-gray-300 rounded">
@@ -26,9 +26,9 @@
       <div id="progressText" class="text-sm mt-1"></div>
     </div>
     <div id="message" class="mb-4 text-red-500"></div>
-    <div class="mb-4">
-      <input type="text" id="newCheckItem" placeholder="新しいチェック項目名" class="border p-2 rounded"/>
-      <button onclick="addCheckItem()" class="bg-purple-500 text-white px-4 py-2 rounded">チェック項目追加</button>
+    <div class="mb-4 flex items-center space-x-2">
+      <input type="text" id="newCheckItem" placeholder="新しいチェック項目名" class="border p-2 rounded flex-grow"/>
+      <button onclick="addCheckItem()" class="bg-purple-500 text-white px-4 py-2 rounded flex-shrink-0">チェック項目追加</button>
     </div>
     <div id="checklist-container" class="space-y-4"></div>
   </div>
