@@ -182,10 +182,12 @@
             <br/>`;
         });
 
-        // タイトルに 管理番号 + 物件名 + 作業タイプ
+        // タイトル（空の値は省略してスペースで結合）
+        const title = [item.managementNumber, item.propertyName, item.workType].filter(Boolean).join(" ");
+
         div.innerHTML=`
           <div class="font-bold text-lg">
-            ${item.managementNumber} ${item.propertyName} ${item.workType || ""}
+            ${title}
           </div>
           ${scheduleHtml}
           <div class="ml-4 mt-2">
