@@ -1,10 +1,10 @@
 {
-  "name": "Excelチェックリスト管理ツール",
+  "name": "チェックリスト管理ツール",
   "short_name": "チェックリスト",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#f9faff",
-  "theme_color": "#2563eb",
+  "background_color": "#ffffff",
+  "theme_color": "#4f46e5",
   "icons": [
     {
       "src": "icon-192.png",
