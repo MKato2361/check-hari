@@ -36,11 +36,6 @@
     </div>
   </div>
 
-  <!-- 完了案件折りたたみボタン -->
-  <div class="mb-4 flex justify-center sm:justify-start">
-    <button id="toggleCompletedBtn" onclick="toggleCompletedAll()" class="bg-gray-600 text-white px-4 py-2 rounded text-base sm:text-lg">完了案件を折りたたむ</button>
-  </div>
-
   <!-- 進捗バー -->
   <div id="progressContainer" class="mb-4 hidden">
     <div class="w-full bg-gray-300 rounded">
@@ -62,7 +57,6 @@
 <script>
 let data = [];
 let headers = [];
-let collapseCompleted = true;
 const STORAGE_KEY = "checklist_data";
 
 // 永続化
@@ -135,12 +129,8 @@ function renderChecklist(){
   const cont=document.getElementById("checklist-container");
   cont.innerHTML="";
   data.forEach(item=>{
-    const isAllDone=item.checks.length>0 && item.checks.every(c=>c.state===1||c.state===2);
-
     const div=document.createElement("div");
-    let classes=`bg-white p-4 rounded shadow border-2 ${isAllDone?"border-green-500":"border-gray-200"} mb-2`;
-    if(isAllDone) div.classList.add("bg-gray-100","text-gray-500");
-    div.className=classes;
+    div.className=`bg-white p-4 rounded shadow border-2 ${item.checks.every(c=>c.state===1||c.state===2)?"border-green-500":"border-gray-200"} mb-2`;
 
     const formatDateTime=dt=>{
       if(!dt) return "-";
@@ -155,9 +145,7 @@ function renderChecklist(){
 
     // チェックリスト
     const checksContainer=document.createElement("div");
-    checksContainer.className="ml-4 mt-2 overflow-hidden transition-all duration-300";
-    if(isAllDone && collapseCompleted) checksContainer.style.maxHeight="0px";
-
+    checksContainer.className="ml-4 mt-2";
     item.checks.forEach((c,idx)=>{
       const sym=c.state===1?"✔":c.state===2?"✖":"";
       const color=c.state===1?"bg-green-500":c.state===2?"bg-red-500":"bg-gray-200";
@@ -170,14 +158,8 @@ function renderChecklist(){
     const workTypeStr=item.workType?`[${item.workType}]`:"";
     const title=[item.managementNumber,item.propertyName,workTypeStr].filter(Boolean).join(" ");
     const titleDiv=document.createElement("div");
-    titleDiv.className="font-bold text-lg cursor-pointer select-none flex justify-between items-center";
-    titleDiv.innerHTML=`${title}${isAllDone?" (完了案件)":""}`;
-    titleDiv.addEventListener("click",()=>{
-      if(isAllDone){
-        if(checksContainer.style.maxHeight==="0px") checksContainer.style.maxHeight=checksContainer.scrollHeight+"px";
-        else checksContainer.style.maxHeight="0px";
-      }
-    });
+    titleDiv.className="font-bold text-lg";
+    titleDiv.innerText=title;
 
     div.appendChild(titleDiv);
     div.appendChild(scheduleHtml ? (()=>{const d=document.createElement("div"); d.innerHTML=scheduleHtml; return d;})() : null);
@@ -185,13 +167,6 @@ function renderChecklist(){
     cont.appendChild(div);
   });
   updateProgress();
-}
-
-// 完了案件折りたたみ切替
-function toggleCompletedAll(){
-  collapseCompleted=!collapseCompleted;
-  document.getElementById("toggleCompletedBtn").innerText=collapseCompleted?"完了案件を展開":"完了案件を折りたたむ";
-  renderChecklist();
 }
 
 // 進捗バー
