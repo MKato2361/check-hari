@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <title>チェックリスト管理ツール</title>
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#4f46e5">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/pizzip@3.1.5/dist/pizzip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/docxtemplater@3.42.2/build/docxtemplater.js"></script>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#4F46E5"/>
 </head>
 <body class="bg-gray-100 p-4">
   <div class="max-w-4xl mx-auto">
@@ -18,19 +18,19 @@
     <div class="mb-4">
       <div class="flex flex-row flex-wrap items-center space-x-2 mb-2">
         <label class="flex items-center space-x-2 border p-2 rounded bg-white cursor-pointer flex-shrink-0">
-            <span class="text-gray-500">ファイルを選択</span>
+            <span class="text-gray-500">Excelファイルを選択</span>
             <input type="file" id="fileInput" class="hidden" onchange="updateFileName('fileInput', 'excelFileName')" />
         </label>
         <span id="excelFileName" class="text-sm text-gray-600">選択されていません</span>
-        <button onclick="exportExcel()" class="bg-green-500 text-white px-4 py-2 rounded flex-shrink-0">チェックリスト出力</button>
+        <button onclick="exportExcel()" class="bg-green-500 text-white px-4 py-2 rounded flex-shrink-0">Excel出力</button>
       </div>
       <div class="flex flex-row flex-wrap items-center space-x-2">
         <label class="flex items-center space-x-2 border p-2 rounded bg-white cursor-pointer flex-shrink-0">
-            <span class="text-gray-500">ファイルを選択</span>
+            <span class="text-gray-500">Wordテンプレートを選択（省略可）</span>
             <input type="file" id="wordTemplate" class="hidden" onchange="updateFileName('wordTemplate', 'wordFileName')" />
         </label>
         <span id="wordFileName" class="text-sm text-gray-600">選択されていません</span>
-        <button onclick="exportWord()" class="bg-blue-500 text-white px-4 py-2 rounded flex-shrink-0">貼紙出力</button>
+        <button onclick="exportWord()" class="bg-blue-500 text-white px-4 py-2 rounded flex-shrink-0">Word出力</button>
       </div>
     </div>
     <div id="progressContainer" class="mb-4 hidden">
@@ -51,17 +51,12 @@
 let data = [];
 let headers = [];
 
-// PWA: Service Worker登録
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js')
-    .then(reg => console.log('Service Worker登録成功:', reg))
-    .catch(err => console.log('Service Worker登録失敗:', err));
-}
-
-// ファイル名表示を更新
+// ファイル名表示更新
 function updateFileName(inputId, spanId) {
-    const fileName = document.getElementById(inputId).files[0]?.name || "選択されていません";
-    document.getElementById(spanId).textContent = fileName;
+    const fileInput = document.getElementById(inputId);
+    if (fileInput.files.length > 0) {
+        document.getElementById(spanId).textContent = fileInput.files[0].name;
+    }
 }
 
 // Excel読み込み
@@ -120,7 +115,8 @@ function handleCheck(itemId, idx){
     const DD = ('0' + now.getDate()).slice(-2);
     const HH = ('0' + now.getHours()).slice(-2);
     const mm = ('0' + now.getMinutes()).slice(-2);
-    check.date = `${YYYY}/${MM}/${DD} ${HH}:${mm}`;
+    const week = ["日","月","火","水","木","金","土"][now.getDay()];
+    check.date = `${YYYY}/${MM}/${DD}(${week}) ${HH}:${mm}`;
   } else if(check.state===0){
     check.date="";
   }
@@ -131,24 +127,23 @@ function handleCheck(itemId, idx){
 function renderChecklist(){
   const cont=document.getElementById("checklist-container");
   cont.innerHTML="";
-  const dayOfWeek = ['日','月','火','水','木','金','土'];
-  const formatDateTime = (dt) => {
-      if (!dt) return "-";
-      const d = new Date(dt);
-      const YYYY = d.getFullYear();
-      const M = d.getMonth() + 1;
-      const D = d.getDate();
-      const day = dayOfWeek[d.getDay()];
-      const HH = ('0' + d.getHours()).slice(-2);
-      const mm = ('0' + d.getMinutes()).slice(-2);
-      return `${YYYY}/${M}/${D}(${day}) ${HH}:${mm}`;
-  };
-
   data.forEach(item=>{
     const isAllDone = item.checks.length > 0 && item.checks.every(c => c.state === 1 || c.state === 2);
-
     const div=document.createElement("div");
     div.className=`bg-white p-4 rounded shadow border-2 ${isAllDone ? "border-green-500" : "border-gray-200"}`;
+    
+    const formatDateTime = (dt) => {
+      if(!dt) return "-";
+      const d = new Date(dt);
+      if(isNaN(d)) return dt; 
+      const YYYY = d.getFullYear();
+      const MM = ('0' + (d.getMonth() + 1)).slice(-2);
+      const DD = ('0' + d.getDate()).slice(-2);
+      const HH = ('0' + d.getHours()).slice(-2);
+      const mm = ('0' + d.getMinutes()).slice(-2);
+      const week = ["日","月","火","水","木","金","土"][d.getDay()];
+      return `${YYYY}/${MM}/${DD}(${week}) ${HH}:${mm}`;
+    };
 
     const scheduleHtml = `
       <div class="text-sm text-gray-600">
@@ -158,7 +153,7 @@ function renderChecklist(){
 
     let checksHtml="";
     item.checks.forEach((c,idx)=>{
-      const sym=c.state===1?"✔":c.state===2?"✖":""; 
+      const sym=c.state===1?"✔":c.state===2?"✖":"";
       const color=c.state===1?"bg-green-500":c.state===2?"bg-red-500":"bg-gray-200";
       checksHtml+=`
         <div class="flex items-center space-x-2 my-1">
@@ -199,7 +194,7 @@ function updateProgress(){
   document.getElementById("progressText").innerText=`完了 ${done} / ${total}`;
 }
 
-// Excel出力
+// Excel出力（変更なし）
 function exportExcel(){
   if(data.length===0){ alert("データがありません"); return; }
   const ws_data=[["管理番号","物件名","作業タイプ","予定開始","予定終了"]];
@@ -235,22 +230,19 @@ async function exportWord() {
         alert("Excelデータを先に読み込んでください。");
         return;
     }
-
+    let file = document.getElementById("wordTemplate").files[0];
     let content;
-    const fileInput = document.getElementById("wordTemplate").files[0];
-    
-    if (fileInput) {
-        content = await fileInput.arrayBuffer();
-    } else {
+    if (!file) {
+        // デフォルトの harigami.docx を fetch
         try {
             const response = await fetch("harigami.docx");
-            if (!response.ok) throw new Error("harigami.docx を取得できません");
             content = await response.arrayBuffer();
         } catch (err) {
-            console.error(err);
-            alert("Wordテンプレートが見つかりません。harigami.docx を配置してください。");
+            alert("harigami.docx を読み込めませんでした（オフラインの場合はキャッシュが必要です）。");
             return;
         }
+    } else {
+        content = await file.arrayBuffer();
     }
 
     const zipOut = new JSZip();
@@ -272,7 +264,7 @@ async function exportWord() {
         const d_start = item.startTime ? new Date(item.startTime) : null;
         const d_end = item.endTime ? new Date(item.endTime) : null;
 
-        const date = d_start ? `${d_start.getFullYear()}年${d_start.getMonth()+1}月${d_start.getDate()}日（${dayOfWeek[d_start.getDay()]}）` : "";
+        const date = d_start ? `${d_start.getFullYear()}年${d_start.getMonth() + 1}月${d_start.getDate()}日（${dayOfWeek[d_start.getDay()]}）` : "";
         const startTime = d_start ? `${h(d_start)}:${m(d_start)}` : "";
         const endTime = d_end ? `${h(d_end)}:${m(d_end)}` : "";
 
@@ -289,12 +281,12 @@ async function exportWord() {
         try {
             doc.render();
         } catch (err) {
-            const templateErrorMessage = "テンプレート内のタグに問題があります。例: {{物件名}} のようにスペースを入れずに記述してください。";
+            const templateErrorMessage = `テンプレート内のタグに問題があります。例: {{物件名}} のようにスペースを入れずに記述してください。`;
             console.error("ドキュメント生成エラー:", err);
             document.getElementById("message").innerText = `ドキュメント生成エラー: ${item.propertyName} - ${err.message}. ${templateErrorMessage}`;
             continue;
         }
-
+        
         const out = doc.getZip().generate({
             type: "blob",
             mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -302,7 +294,7 @@ async function exportWord() {
         const fname = (item.managementNumber || "") + "_" + (item.propertyName || "") + ".docx";
         zipOut.file(fname, out);
     }
-
+    
     zipOut.generateAsync({ type: "blob" }).then(function(content) {
         saveAs(content, "word_outputs.zip");
     }).catch(err => {
@@ -310,7 +302,16 @@ async function exportWord() {
         document.getElementById("message").innerText = "ZIPファイル生成エラー: " + err.message;
     });
 }
+
+// PWA Service Worker 登録
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("service-worker.js").then(
+      reg => console.log("ServiceWorker registered:", reg),
+      err => console.error("ServiceWorker registration failed:", err)
+    );
+  });
+}
 </script>
 </body>
 </html>
-
