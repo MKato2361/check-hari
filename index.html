@@ -20,7 +20,7 @@
             <input type="file" id="fileInput" class="hidden" onchange="updateFileName('fileInput', 'excelFileName')" />
         </label>
         <span id="excelFileName" class="text-sm text-gray-600">選択されていません</span>
-        <button onclick="exportExcel()" class="bg-green-500 text-white px-4 py-2 rounded flex-shrink-0">Excel出力</button>
+        <button onclick="exportExcel()" class="bg-green-500 text-white px-4 py-2 rounded flex-shrink-0">チェックリスト出力</button>
       </div>
       <div class="flex flex-row flex-wrap items-center space-x-2">
         <label class="flex items-center space-x-2 border p-2 rounded bg-white cursor-pointer flex-shrink-0">
@@ -28,7 +28,7 @@
             <input type="file" id="wordTemplate" class="hidden" onchange="updateFileName('wordTemplate', 'wordFileName')" />
         </label>
         <span id="wordFileName" class="text-sm text-gray-600">選択されていません</span>
-        <button onclick="exportWord()" class="bg-blue-500 text-white px-4 py-2 rounded flex-shrink-0">Word出力</button>
+        <button onclick="exportWord()" class="bg-blue-500 text-white px-4 py-2 rounded flex-shrink-0">貼紙出力</button>
       </div>
     </div>
     <div id="progressContainer" class="mb-4 hidden">
@@ -51,7 +51,7 @@ let headers = [];
 
 // ファイル名表示を更新
 function updateFileName(inputId, spanId) {
-    const fileName = document.getElementById(inputId).files[0].name;
+    const fileName = document.getElementById(inputId).files[0]?.name || "選択されていません";
     document.getElementById(spanId).textContent = fileName;
 }
 
@@ -226,16 +226,26 @@ async function exportWord() {
         alert("Excelデータを先に読み込んでください。");
         return;
     }
-    const file = document.getElementById("wordTemplate").files[0];
-    if (!file) {
-        alert("Wordテンプレートを選択してください。");
-        return;
+
+    let content;
+    const fileInput = document.getElementById("wordTemplate").files[0];
+    
+    if (fileInput) {
+        content = await fileInput.arrayBuffer();
+    } else {
+        try {
+            const response = await fetch("harigami.docx");
+            if (!response.ok) throw new Error("harigami.docx を取得できません");
+            content = await response.arrayBuffer();
+        } catch (err) {
+            console.error(err);
+            alert("Wordテンプレートが見つかりません。harigami.docx を配置してください。");
+            return;
+        }
     }
 
-    const content = await file.arrayBuffer();
     const zipOut = new JSZip();
-    
-    const dayOfWeek = ['日曜日', '月曜日', '火曜日', '水曜日', '木曜日', '金曜日', '土曜日'];
+    const dayOfWeek = ['日曜日','月曜日','火曜日','水曜日','木曜日','金曜日','土曜日'];
     const h = (d) => ('0' + d.getHours()).slice(-2);
     const m = (d) => ('0' + d.getMinutes()).slice(-2);
 
@@ -253,7 +263,7 @@ async function exportWord() {
         const d_start = item.startTime ? new Date(item.startTime) : null;
         const d_end = item.endTime ? new Date(item.endTime) : null;
 
-        const date = d_start ? `${d_start.getFullYear()}年${d_start.getMonth() + 1}月${d_start.getDate()}日（${dayOfWeek[d_start.getDay()]}）` : "";
+        const date = d_start ? `${d_start.getFullYear()}年${d_start.getMonth()+1}月${d_start.getDate()}日（${dayOfWeek[d_start.getDay()]}）` : "";
         const startTime = d_start ? `${h(d_start)}:${m(d_start)}` : "";
         const endTime = d_end ? `${h(d_end)}:${m(d_end)}` : "";
 
@@ -270,12 +280,12 @@ async function exportWord() {
         try {
             doc.render();
         } catch (err) {
-            const templateErrorMessage = `テンプレート内のタグに問題があります。例: {{物件名}} のようにスペースを入れずに記述してください。`;
+            const templateErrorMessage = "テンプレート内のタグに問題があります。例: {{物件名}} のようにスペースを入れずに記述してください。";
             console.error("ドキュメント生成エラー:", err);
             document.getElementById("message").innerText = `ドキュメント生成エラー: ${item.propertyName} - ${err.message}. ${templateErrorMessage}`;
             continue;
         }
-        
+
         const out = doc.getZip().generate({
             type: "blob",
             mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -283,7 +293,7 @@ async function exportWord() {
         const fname = (item.managementNumber || "") + "_" + (item.propertyName || "") + ".docx";
         zipOut.file(fname, out);
     }
-    
+
     zipOut.generateAsync({ type: "blob" }).then(function(content) {
         saveAs(content, "word_outputs.zip");
     }).catch(err => {
