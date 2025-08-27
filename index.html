@@ -212,7 +212,7 @@ function exportExcel(){
     const row=[item.managementNumber,item.propertyName,item.workType,item.startTime,item.endTime];
     checkNames.forEach(name=>{
       const c=item.checks.find(x=>x.name===name);
-      row.push(c? (c.state===1?"✔":c.state===2?"✖":""):"");
+      row.push(c? (c.state===1?"完了":c.state===2?"不要":""):"");
       row.push(c?c.date:"");
     });
     ws_data.push(row);
