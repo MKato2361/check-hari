@@ -214,7 +214,6 @@ async function exportWord() {
         }
 
         // 'harigami.docx'の日本語のプレースホルダーに合わせてデータを設定
-        // 日付はstartTimeから抽出
         const date = item.startTime ? item.startTime.split(' ')[0] : "";
         
         doc.setData({
