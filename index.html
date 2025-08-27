@@ -218,7 +218,7 @@ async function exportWord() {
         const d_start = item.startTime ? new Date(item.startTime) : null;
         const d_end = item.endTime ? new Date(item.endTime) : null;
 
-        const date = d_start ? `${d_start.getFullYear()}年${d_start.getMonth() + 1}月${d_start.getDate()}日${dayOfWeek[d_start.getDay()]}` : "";
+        const date = d_start ? `${d_start.getFullYear()}年${d_start.getMonth() + 1}月${d_start.getDate()}日（${dayOfWeek[d_start.getDay()]}）` : "";
         const startTime = d_start ? `${h(d_start)}:${m(d_start)}` : "";
         const endTime = d_end ? `${h(d_end)}:${m(d_end)}` : "";
 
