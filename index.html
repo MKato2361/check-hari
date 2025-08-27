@@ -108,7 +108,7 @@ function renderChecklist(){
     // 予定開始・終了
     const scheduleHtml = `
       <div class="text-sm text-gray-600">
-        開始: ${item.startTime || "-"}　
+        開始: ${item.startTime || "-"}〠
         終了: ${item.endTime || "-"}
       </div>`;
 
@@ -200,7 +200,6 @@ async function exportWord() {
     const content = await file.arrayBuffer();
     const zipOut = new JSZip();
     
-    // データ項目ごとに処理を実行
     for (const item of data) {
         const zip = new PizZip(content);
         let doc;
@@ -212,23 +211,28 @@ async function exportWord() {
             return;
         }
 
-        // 'harigami.docx'の日本語のプレースホルダーに合わせてデータを設定
         const date = item.startTime ? item.startTime.split(' ')[0] : "";
         
-        doc.setData({
+        const dataToRender = {
             '管理番号': item.managementNumber,
             '物件名': item.propertyName,
             '日付': date,
             '予定開始': item.startTime,
             '予定終了': item.endTime
-        });
+        };
+
+        // デバッグ用: 実際にdocxtemplaterに渡されるデータを確認
+        console.log('--- Rendering data ---');
+        console.log(dataToRender);
+        
+        doc.setData(dataToRender);
 
         try {
             doc.render();
         } catch (err) {
             console.error("ドキュメント生成エラー:", err);
             document.getElementById("message").innerText = `ドキュメント生成エラー: ${item.propertyName} - ` + err.message;
-            continue; // 失敗しても次の項目に進む
+            continue;
         }
         
         const out = doc.getZip().generate({
