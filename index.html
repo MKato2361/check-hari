@@ -13,7 +13,7 @@
 <body class="bg-gray-100 p-4">
   <div class="max-w-4xl mx-auto">
     <h1 class="text-2xl font-bold mb-4">チェックリスト管理ツール</h1>
-    <div class="mb-4 space-x-2">
+    <div class="mb-4 space-x-2 flex flex-wrap gap-2">
       <input type="file" id="fileInput" class="border p-2" />
       <button onclick="exportExcel()" class="bg-green-500 text-white px-4 py-2 rounded">Excel出力</button>
       <input type="file" id="wordTemplate" class="border p-2" />
@@ -34,9 +34,8 @@
   </div>
 
 <script>
-let data = []; // データ格納
-let headers = []; // ヘッダー
-let newCheckName = "";
+let data = [];
+let headers = [];
 
 // Excel読み込み
 document.getElementById("fileInput").addEventListener("change", handleFile, false);
@@ -44,9 +43,9 @@ function handleFile(e){
   const file = e.target.files[0];
   const reader = new FileReader();
   reader.onload = function(evt){
-    const wb = XLSX.read(evt.target.result, {type:"binary"});
+    const wb = XLSX.read(evt.target.result, {type:"binary", cellDates:true, raw:true});
     const ws = wb.Sheets[wb.SheetNames[0]];
-    const json = XLSX.utils.sheet_to_json(ws, {header:1});
+    const json = XLSX.utils.sheet_to_json(ws, {header:1, defval:""});
     headers = json[0];
     const managementIdx=headers.findIndex(h=>h.includes("管理番号"));
     const propertyIdx=headers.findIndex(h=>h.includes("物件名"));
@@ -61,8 +60,8 @@ function handleFile(e){
         managementNumber: json[i][managementIdx]||"",
         propertyName: json[i][propertyIdx]||"",
         workType: json[i][workTypeIdx]||"",
-        startTime: json[i][startIdx]? XLSX.SSF.format('yyyy/mm/dd hh:mm', json[i][startIdx]):"",
-        endTime: json[i][endIdx]? XLSX.SSF.format('yyyy/mm/dd hh:mm', json[i][endIdx]):"",
+        startTime: json[i][startIdx]||"",
+        endTime: json[i][endIdx]||"",
         checks:[]
       });
     }
@@ -100,13 +99,11 @@ function renderChecklist(){
   const cont=document.getElementById("checklist-container");
   cont.innerHTML="";
   data.forEach(item=>{
-    // ✔ or ✖ ですべて埋まっていれば完了扱い
     const isAllDone = item.checks.length > 0 && item.checks.every(c => c.state === 1 || c.state === 2);
 
     const div=document.createElement("div");
     div.className=`bg-white p-4 rounded shadow border-2 ${isAllDone ? "border-green-500" : "border-gray-200"}`;
 
-    // 予定開始・終了
     const scheduleHtml = `
       <div class="text-sm text-gray-600">
         開始: ${item.startTime || "-"}　
@@ -117,15 +114,16 @@ function renderChecklist(){
     item.checks.forEach((c,idx)=>{
       const sym=c.state===1?"✔":c.state===2?"✖":"";
       const color=c.state===1?"bg-green-500":c.state===2?"bg-red-500":"bg-gray-200";
+      // Use flexbox for each checklist item to ensure alignment
       checksHtml+=`
+        <div class="flex items-center space-x-2 my-1">
         <button onclick="handleCheck(${item.id},${idx})" 
-          class="w-8 h-8 rounded-full ${color} text-white text-sm">${sym}</button>
+          class="w-8 h-8 rounded-full ${color} text-white text-sm flex-shrink-0">${sym}</button>
         <span class="ml-2">${c.name}</span>
-        ${c.date?`<span class="ml-2 text-sm text-gray-500">${c.date}</span>`:""}
-        <br/>`;
+        ${c.date?`<span class="ml-auto text-sm text-gray-500">${c.date}</span>`:""}
+        </div>`;
     });
 
-    // タイトル（作業タイプは[]で囲む）
     const workTypeStr = item.workType ? `[${item.workType}]` : "";
     const title = [item.managementNumber, item.propertyName, workTypeStr].filter(Boolean).join(" ");
 
