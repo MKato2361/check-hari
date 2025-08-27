@@ -201,6 +201,11 @@ async function exportWord() {
     const content = await file.arrayBuffer();
     const zipOut = new JSZip();
     
+    // 日付と時刻のフォーマット関数を定義
+    const dayOfWeek = ['日曜日', '月曜日', '火曜日', '水曜日', '木曜日', '金曜日', '土曜日'];
+    const h = (d) => ('0' + d.getHours()).slice(-2);
+    const m = (d) => ('0' + d.getMinutes()).slice(-2);
+
     for (const item of data) {
         const zip = new PizZip(content);
         let doc;
@@ -212,14 +217,19 @@ async function exportWord() {
             return;
         }
 
-        const date = item.startTime ? item.startTime.split(' ')[0] : "";
-        
+        const d_start = item.startTime ? new Date(item.startTime) : null;
+        const d_end = item.endTime ? new Date(item.endTime) : null;
+
+        const date = d_start ? `${d_start.getFullYear()}年${d_start.getMonth() + 1}月${d_start.getDate()}日${dayOfWeek[d_start.getDay()]}` : "";
+        const startTime = d_start ? `${h(d_start)}:${m(d_start)}` : "";
+        const endTime = d_end ? `${h(d_end)}:${m(d_end)}` : "";
+
         const dataToRender = {
             '管理番号': item.managementNumber,
             '物件名': item.propertyName,
             '日付': date,
-            '予定開始': item.startTime,
-            '予定終了': item.endTime
+            '予定開始': startTime,
+            '予定終了': endTime
         };
 
         // デバッグ用: 実際にdocxtemplaterに渡されるデータを確認
