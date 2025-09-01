@@ -147,7 +147,7 @@ function renderChecklist(){
     const checksContainer=document.createElement("div");
     checksContainer.className="ml-4 mt-2";
     item.checks.forEach((c,idx)=>{
-      const sym=c.state===1?"✔":c.state===2?"✖":"";
+      const sym=c.state===1?"✔":c.state===2?"✖":""; 
       const color=c.state===1?"bg-green-500":c.state===2?"bg-red-500":"bg-gray-200";
       const row=document.createElement("div");
       row.className="flex items-center space-x-2 my-1";
@@ -230,10 +230,16 @@ async function exportWord(){
     const d_start=item.startTime?new Date(item.startTime):null;
     const d_end=item.endTime?new Date(item.endTime):null;
     const date=d_start?`${d_start.getFullYear()}年${d_start.getMonth()+1}月${d_start.getDate()}日（${dayOfWeek[d_start.getDay()]}）`:"";
-    const startTime=d_start?h(d_start):"";
-    const endTime=d_end?h(d_end):"";
+    const startTime=d_start?`${h(d_start)}:${m(d_start)}`:"";
+    const endTime=d_end?`${h(d_end)}:${m(d_end)}`:"";
 
-    const dataToRender={'管理番号':item.managementNumber,'物件名':item.propertyName,'日付':date,'予定開始':startTime,'予定終了':endTime};
+    const dataToRender={
+      '管理番号':item.managementNumber,
+      '物件名':item.propertyName,
+      '日付':date,
+      '予定開始':startTime,
+      '予定終了':endTime
+    };
     doc.setData(dataToRender);
 
     try{ doc.render(); } 
